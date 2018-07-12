@@ -1,0 +1,4 @@
+[
+  "tests/test_ECl.py::test_something", 
+  "tests/test_wigner_matrix.py::test_wigner_matrix"
+]
