@@ -7,6 +7,10 @@ from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 import numpy as np
 
+import numpy as np
+import healpy as hp
+from sympy.physics.wigner import wigner_3j
+import time
 
 class KernelMatrix(object):
     """
@@ -24,9 +28,38 @@ class KernelMatrix(object):
         :param l2: second dimension of the kernel matrix
         :return: Kernel matrix with dimension (l1,l2)
         """
+        map_Y3 = hp.read_map('/Volumes/ipa/refreg/temp/herbelj/projects/mccl_DES/DR1/runs/008__update_y1/surveys/des000v000/cls_output/maps/map___EG=counts.fits')
+        unseen_pix = np.where(map_Y3 == hp.UNSEEN)[0]
+        map_mask = np.ones(hp.nside2npix(1024))
+        map_mask[unseen_pix] = hp.UNSEEN
+        Wl = np.array(hp.sphtfunc.anafast((map_mask)))
+
+        print(Wl)
+
         M = np.zeros((l1, l2))
-        M[0, 0] = 1.9517867218343866e-14
-        M[1, 1] = M[2, 2] = M[3, 3] = M[4, 4] = 1
+        logn = np.hstack((0.0, np.cumsum(np.log(np.arange(1, 8000 + 1)))))
+
+        def log_CG(i,j,k):
+            L = i + j + k
+            if L % 2 == 0:
+                return ((-1) ** (L / 2)) * np.exp(
+                    (1.0 / 2.0) * (logn[int(L - 2 * i)] + logn[int(L - 2 * j)] + logn[int(L - 2 * k)] - logn[int(L + 1)]) + logn[int((L / 2))] -
+                    logn[int(L / 2 - i)] - logn[int(L / 2 - j)] - logn[int(L / 2 - k)])
+            else:
+                return 0
+
+        for i in range(l1):
+            for j in range(l2):
+                l3 = np.arange(np.abs(i - j), i + j + 1, 1)
+                index = 0
+                for k in l3:
+
+                    if index == 0:
+                        cg_sum = (2 * k + 1) * Wl[k] * log_CG(i, j, k) ** 2
+                    else:
+                        cg_sum = cg_sum + (2 * k + 1) * Wl[k] * log_CG(i, j, k) ** 2
+                    index = index + 1
+                M[i, j] = (2 * j + 1) / (4 * np.pi) * cg_sum
         return M
 
 # External modules
