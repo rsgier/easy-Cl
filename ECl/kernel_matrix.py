@@ -51,7 +51,7 @@ class KernelMatrix(object):
         def log_CG(i, j, k):
             L = i + j + k
             if L % 2 == 1:
-                return 1
+                return 0
 
             return ((-1) ** (L // 2)) * np.exp(
                 .5 * (logn[L - 2 * i]
