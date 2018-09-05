@@ -14,27 +14,34 @@ import time
 
 class KernelMatrix(object):
     """
-    Computes the elements of the kernel matrix using the logarith of the Wigner symbols.
+    Computes the elements of the kernel matrix using the logarithm of the Wigner symbols.
     """
 
     def __init__(self):
         pass
 
-    def kernelmatrix(self, l1, l2):
+    def maskpowerspectrum(self, path, nside):
+        """
+        :param path: path to mask.
+        :param nside: NSIDE of the map used to compute the power spectrum of the mask.
+        :return: Power spectrum of the mask used to compute kernel matrix elements.
+        """
+
+        map_Y3 = hp.read_map(path)
+        unseen_pix = np.where(map_Y3 == hp.UNSEEN)[0]
+        map_mask = np.ones(hp.nside2npix(nside))
+        map_mask[unseen_pix] = hp.UNSEEN
+        return np.array(hp.sphtfunc.anafast((map_mask)))
+
+    def kernelmatrix(self, maskps, l1, l2):
         """
         Kernel matrix computation.
 
         :param l1: first dimension of the kernel matrix
         :param l2: second dimension of the kernel matrix
+        :param maskps: power spectum of the mask used to compute matrix elements.
         :return: Kernel matrix with dimension (l1,l2)
         """
-        map_Y3 = hp.read_map('/Volumes/ipa/refreg/temp/herbelj/projects/mccl_DES/DR1/runs/008__update_y1/surveys/des000v000/cls_output/maps/map___EG=counts.fits')
-        unseen_pix = np.where(map_Y3 == hp.UNSEEN)[0]
-        map_mask = np.ones(hp.nside2npix(1024))
-        map_mask[unseen_pix] = hp.UNSEEN
-        Wl = np.array(hp.sphtfunc.anafast((map_mask)))
-
-        print(Wl)
 
         M = np.zeros((l1, l2))
         logn = np.hstack((0.0, np.cumsum(np.log(np.arange(1, 8000 + 1)))))
@@ -55,14 +62,10 @@ class KernelMatrix(object):
                 for k in l3:
 
                     if index == 0:
-                        cg_sum = (2 * k + 1) * Wl[k] * log_CG(i, j, k) ** 2
+                        cg_sum = (2 * k + 1) * maskps[k] * log_CG(i, j, k) ** 2
                     else:
-                        cg_sum = cg_sum + (2 * k + 1) * Wl[k] * log_CG(i, j, k) ** 2
+                        cg_sum = cg_sum + (2 * k + 1) * maskps[k] * log_CG(i, j, k) ** 2
                     index = index + 1
                 M[i, j] = (2 * j + 1) / (4 * np.pi) * cg_sum
         return M
 
-# External modules
-
-
-# ECl imports
