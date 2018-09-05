@@ -18,7 +18,7 @@ CCl = ComputeCl()
 
 def test_compute_cls():
 
-    NSIDE = 256
+    NSIDE = 16
 
     maps = cl.namedtuple('maps', ['map', 'w', 'type'])
 
@@ -32,6 +32,11 @@ def test_compute_cls():
     m1 = maps(map=map1, w=w_map, type='S0')
     m2 = maps(map=map2, w=w_map, type='S0')
 
-    cl_auto, cl_cross12, cl_cross21 = CCl.computecl(m1, m2, auto=False)
+    cl_test = CCl.computecl(m1, m2, auto=False)
 
-    assert cl_cross12.all() == cl_cross21.all()
+    assert len(cl_test.l) == 48
+    assert len(cl_test.cl) == 3
+    assert len(cl_test.cl[0]) == 48
+    assert len(cl_test.cl[1]) == 48
+    assert len(cl_test.cl[2]) == 48
+
