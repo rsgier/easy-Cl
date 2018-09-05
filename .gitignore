@@ -45,3 +45,4 @@ output/*/index.html
 docs/_build
 
 .pytest_cache/
+.idea/
