@@ -11,7 +11,7 @@ import numpy as np
 import healpy as hp
 from collections import namedtuple
 
-cl_data = namedtuple('cl', ['l','cl','cl_type', 'input_maps_type'])
+cl_data = namedtuple('cl', ['l','cl', 'input_maps_type'])
 
 class ComputeCl(object):
     """
@@ -40,12 +40,14 @@ class ComputeCl(object):
         """
 
         if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
-            cl_11 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map1.w * map1.map))
-            cl_22 = np.array(hp.sphtfunc.anafast(map2.w * map2.map, map2.w * map2.map))
+            #cl_11 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map1.w * map1.map))
+            #cl_22 = np.array(hp.sphtfunc.anafast(map2.w * map2.map, map2.w * map2.map))
             cl_12 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map2.w * map2.map))
-            l = np.arange(len(cl_11))
-            cl_out = cl_data(l=l,cl=[cl_11,cl_22,cl_12], cl_type =['auto 11', 'auto 22', 'cross 12'],
-                             input_maps_type=['s0', 's0'])
+            l = np.arange(len(cl_12))
+            #cl_out = cl_data(l=l,cl=[cl_11,cl_22,cl_12], cl_type =['auto 11', 'auto 22', 'cross 12'],
+                             #input_maps_type=['s0', 's0'])
+
+            cl_out = cl_data(l=l,cl=cl_12, input_maps_type=['s0', 's0'])
 
         return cl_out
 
