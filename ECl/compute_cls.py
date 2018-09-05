@@ -21,10 +21,20 @@ class ComputeCl(object):
 
     def computecl(self, map1, map2, auto=False):
         """
-        :param map1: input tuple containing the first map with weights and the type.
-        :param map1: input tuple containing the second map with weights and the type.
+        :param map1: input named tuple containing the first map with weights and the type.
+        :param map1: input named tuple containing the second map with weights and the type.
         :param auto: keyword set to True if only auto-correlation should be computed.
         :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
+
+        The named tuple format used assumes that the data is stored using something like:
+            maps = collections.namedtuple('maps', ['map','w','type'])
+            m1 = maps(map = map, w = wieghtmap, type = 's0')
+
+        Type indicates the types of fields stored by the maps. Currents we have:
+            s0: scalar fields, e.g. kappa, delta, or temperature
+            s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
+                where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
+
         """
 
         if auto == True:
