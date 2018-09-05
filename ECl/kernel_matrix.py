@@ -51,13 +51,6 @@ class KernelMatrix(object):
         :param maskps: power spectum of the mask used to compute matrix elements.
         :return: Kernel matrix with dimension (l1,l2)
         """
-        map_Y3 = hp.read_map(MAP_PATH)
-        unseen_pix = np.where(map_Y3 == hp.UNSEEN)[0]
-        map_mask = np.ones(hp.nside2npix(1024))
-        map_mask[unseen_pix] = hp.UNSEEN
-        Wl = np.array(hp.sphtfunc.anafast((map_mask)))
-
-        print(Wl)
 
         M = np.zeros((l1, l2))
         logn = np.hstack((0.0, np.cumsum(np.log(np.arange(1, 8000 + 1)))))
