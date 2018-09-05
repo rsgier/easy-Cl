@@ -36,6 +36,7 @@ class ComputeCl(object):
             s0: scalar fields, e.g. kappa, delta, or temperature
             s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
                 where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
+            (EB: E & B mode decomposition)
 
         """
 
@@ -46,11 +47,23 @@ class ComputeCl(object):
             l = np.arange(len(cl_12))
             #cl_out = cl_data(l=l,cl=[cl_11,cl_22,cl_12], cl_type =['auto 11', 'auto 22', 'cross 12'],
                              #input_maps_type=['s0', 's0'])
-
+            #Todo reintrocudce cl_type = cl_TT
             cl_out = cl_data(l=l,cl=cl_12, input_maps_type=['s0', 's0'])
 
-        return cl_out
 
+        # if the type is EB in the first place
+
+        #if map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0':
+        # or the other way round
+        # maps 1 or 2 -> E and B mode maps
+        #  cl_out => l, cl = [cl_TE,cl_TB], cl_type? [cl_TE,cl_TB]
+
+        #if map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
+        # both maps to E and B
+        # EE, EB, BE, BB
+
+
+        return cl_out
 #        if auto == True:
 #            print('Compute auto- angular power spectra of the input maps...')
 #           cl_auto = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map1[1] * map1[0]))
