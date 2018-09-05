@@ -30,16 +30,16 @@ class ComputeCl(object):
 
         The named tuple format used assumes that the data is stored using something like:
             maps = collections.namedtuple('maps', ['map','w','type'])
-            m1 = maps(map = map, w = wieghtmap, type = 's0')
+            m1 = maps(map = map, w = wieghtmap, map_type = 's0')
 
-        Type indicates the types of fields stored by the maps. Currents we have:
+        Type indicates the map_type of fields stored by the maps. Currents we have:
             s0: scalar fields, e.g. kappa, delta, or temperature
             s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
                 where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
 
         """
 
-        if map1.type.lower() == 's0' and map2.type.lower() == 's0':
+        if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
             cl_11 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map1.w * map1.map))
             cl_22 = np.array(hp.sphtfunc.anafast(map2.w * map2.map, map2.w * map2.map))
             cl_12 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map2.w * map2.map))
