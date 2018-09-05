@@ -21,7 +21,7 @@ class ComputeCl(object):
     def __init__(self):
         pass
 
-    def computecl(self, map1, map2, auto=False):
+    def computecl(self, map1, map2):
         """
         :param map1: input named tuple containing the first map with weights and the type.
         :param map1: input named tuple containing the second map with weights and the type.
