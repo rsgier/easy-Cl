@@ -9,7 +9,9 @@ import numpy as np
 
 import numpy as np
 import healpy as hp
+from collections import namedtuple
 
+cl_data = namedtuple('cl', ['l','cl','cl_type', 'input_maps_type'])
 
 class ComputeCl(object):
     """
@@ -37,17 +39,27 @@ class ComputeCl(object):
 
         """
 
-        if auto == True:
-            print('Compute auto- angular power spectra of the input maps...')
-            cl_auto = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map1[1] * map1[0]))
-            return cl_auto
+        if map1.type.lower() == 's0' and map2.type.lower() == 's0':
+            cl_11 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map1.w * map1.map))
+            cl_22 = np.array(hp.sphtfunc.anafast(map2.w * map2.map, map2.w * map2.map))
+            cl_12 = np.array(hp.sphtfunc.anafast(map1.w * map1.map, map2.w * map2.map))
+            l = np.arange(len(cl_11))
+            cl_out = cl_data(l=l,cl=[cl_11,cl_22,cl_12], cl_type =['auto 11', 'auto 22', 'cross 12'],
+                             input_maps_type=['s0', 's0'])
 
-        else:
-            print('Compute auto- and cross- angular power spectra of the input maps...')
-            cl_auto = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map1[1] * map1[0]))
-            cl_cross12 = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map2[1] * map2[0]))
-            cl_cross21 = np.array(hp.sphtfunc.anafast(map2[1] * map2[0], map1[1] * map1[0]))
-            return cl_auto, cl_cross12, cl_cross21
+        return cl_out
+
+#        if auto == True:
+#            print('Compute auto- angular power spectra of the input maps...')
+#           cl_auto = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map1[1] * map1[0]))
+#            return cl_auto
+#
+#        else:
+#            print('Compute auto- and cross- angular power spectra of the input maps...')
+#            cl_auto = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map1[1] * map1[0]))
+#            cl_cross12 = np.array(hp.sphtfunc.anafast(map1[1] * map1[0], map2[1] * map2[0]))
+#            cl_cross21 = np.array(hp.sphtfunc.anafast(map2[1] * map2[0], map1[1] * map1[0]))
+#            return cl_auto, cl_cross12, cl_cross21
 
 
 
