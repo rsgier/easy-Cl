@@ -4,6 +4,14 @@ ECl package
 Submodules
 ----------
 
+ECl\.compute\_cls module
+------------------------
+
+.. automodule:: ECl.compute_cls
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 ECl\.ecl module
 ---------------
 

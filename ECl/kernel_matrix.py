@@ -73,8 +73,10 @@ class KernelMatrix(object):
         for i in range(l1):
             for j in range(l2):
                 l3 = np.arange(np.abs(i - j), i + j + 1, 1)
+                k = l3[0]
+                cg_sum = (2 * k + 1) * maskps[k] * log_CG(i, j, k) ** 2
                 for k in l3[1:]:
-                    cg_sum += (2 * k + 1) * Wl[k] * log_CG(i, j, k) ** 2
+                    cg_sum += (2 * k + 1) * maskps[k] * log_CG(i, j, k) ** 2
                 M[i, j] = (2 * j + 1) / (4 * np.pi) * cg_sum
         return M
 
