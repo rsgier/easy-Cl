@@ -12,13 +12,7 @@ import healpy as hp
 from sympy.physics.wigner import wigner_3j
 import time
 
-
-#TODO: include this data into the package instead of hard coding
-#      a folder which might change ?
-
-MAP_PATH = ('/Volumes/ipa/refreg/temp/herbelj/projects/mccl_DES/DR1/runs'
-            '/008__update_y1/surveys/des000v000/cls_output/maps/'
-            'map___EG=counts.fits')
+#path = '/Volumes/ipa/refreg/experiments/herbelj/projects/mccl_DES/DR1/runs/008__update_y1/surveys/des000v000/cls_output/maps/map___EG=counts.fits'
 
 class KernelMatrix(object):
     """
@@ -29,15 +23,15 @@ class KernelMatrix(object):
     def __init__(self):
         pass
 
-    def maskpowerspectrum(self, path, nside):
+    def maskpowerspectrum(self, path_map, nside):
         """
-        :param path: path to mask.
+        :param path_map: path to mask.
         :param nside: NSIDE of the map used to compute the power spectrum of the mask.
         :return: Power spectrum of the mask used to compute kernel matrix elements.
         """
 
-        map_Y3 = hp.read_map(path)
-        unseen_pix = np.where(map_Y3 == hp.UNSEEN)[0]
+        map_input = hp.read_map(path_map)
+        unseen_pix = np.where(map_input == hp.UNSEEN)[0]
         map_mask = np.ones(hp.nside2npix(nside))
         map_mask[unseen_pix] = hp.UNSEEN
         return np.array(hp.sphtfunc.anafast((map_mask)))
