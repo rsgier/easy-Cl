@@ -56,57 +56,58 @@ class ComputeCl(object):
         elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
             dummie_map = np.zeros(len(map1.map[0]))
 
-            cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
+            cl_T1T2, cl_E1E2, cl_B1B2, cl_T1E2, cl_E1B2, cl_T1B2 = np.array(
                 hp.sphtfunc.anafast((dummie_map, map1.w * map1.map[0], map1.w * map1.map[1]),
                                     (dummie_map, map2.w * map2.map[0], map2.w * map2.map[1])))
 
-            #Todo make sure we include BE, even dummy
-            cl_BE = None # this is not yet calculated
+            cl_T2T1, cl_E2E1, cl_B2B1, cl_T2E1, cl_E2B1, cl_T2B1 = np.array(
+                hp.sphtfunc.anafast((dummie_map, map2.w * map2.map[0], map2.w * map2.map[1]),
+                                    (dummie_map, map1.w * map1.map[0], map1.w * map1.map[1])))
 
-            l = np.arange(len(cl_TT))
-            cl_out = cl_data(l=l, cl=[cl_EE, cl_EB, cl_BE, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BE','cl_BB'],
+            l = np.arange(len(cl_T1T2))
+            cl_out = cl_data(l=l, cl=[cl_E1E2, cl_E1B2, cl_E2B1, cl_B1B2], cl_type=['cl_EE', 'cl_EB', 'cl_BE','cl_BB'],
                                  input_maps_type=['s2', 's2'])
-
-        # TODO: check commutative property of E and B fields
-        # if the same map is used twice (for auto-correlations) -> some output cls are the same
 
         elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or \
                                 map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
 
             if map1.map_type.lower() == 's2':
                 dummie_map = np.zeros(len(map2.map))
-                cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
-                    hp.sphtfunc.anafast((map2.w * map2.map, dummie_map, dummie_map),
-                                        (dummie_map, map1.w * map1.map[0], map1.w * map1.map[1])))
-                # can the two dummie_maps be removed from the first entry?
-
+                Q_map, U_map, T_map = map1.w * map1.map[0], map1.w * map1.map[1], map2.w * map2.map
+                type_var = ['s2', 's0']
             else:
                 dummie_map = np.zeros(len(map1.map))
-                cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
-                    hp.sphtfunc.anafast((map1.w * map1.map, dummie_map, dummie_map),
-                                        (dummie_map, map2.w * map2.map[0], map2.w * map2.map[1])))
+                Q_map, U_map, T_map = map2.w * map2.map[0], map2.w * map2.map[1], map1.w * map1.map
+                type_var = ['s0', 's2']
+
+            cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
+                hp.sphtfunc.anafast((T_map, dummie_map, dummie_map),
+                                    (dummie_map, Q_map, U_map)))
 
             l = np.arange(len(cl_TT))
             cl_out = cl_data(l=l, cl=[cl_TE, cl_TB],
                              cl_type=['cl_TE', 'cl_TB'],
-                             input_maps_type=['s0', 's2'])
-            #todo think whether we wnat to track the order of s0 and s2?
+                             input_maps_type=type_var)
+
+            # can the two dummie_maps be removed from the first entry?
+            # -> no: alm and alm2 must have the same number of spectra
 
         elif map1.map_type == 'EB' and map2.map_type.lower() == 's0' or \
                                 map1.map_type.lower() == 's0' and map2.map_type == 'EB':
 
             if map1.map_type == 'EB':
-                cl_TE = hp.sphtfunc.anafast(map2.w * map2.map, map1.w * map1.map[0])
-                cl_TB = hp.sphtfunc.anafast(map2.w * map2.map, map1.w * map1.map[1])
+                T_map, E_map, B_map = map2.w * map2.map, map1.w * map1.map[0], map1.w * map1.map[1]
+                type_var = ['EB', 's0']
 
             else:
-                cl_TE = hp.sphtfunc.anafast(map1.w * map1.map, map2.w * map2.map[0])
-                cl_TB = hp.sphtfunc.anafast(map1.w * map1.map, map2.w * map2.map[1])
+                T_map, E_map, B_map = map1.w * map1.map, map2.w * map2.map[0], map2.w * map2.map[1]
+                type_var = ['s0', 'EB']
 
+            cl_TE, cl_TB = hp.sphtfunc.anafast(T_map, E_map), hp.sphtfunc.anafast(T_map, B_map)
             l = np.arange(len(cl_TE))
             cl_out = cl_data(l=l, cl=[cl_TE, cl_TB],
                              cl_type=['cl_TE', 'cl_TB'],
-                             input_maps_type=['s0', 'EB'])
+                             input_maps_type=type_var)
 
         else:
             sys.exit("Error: Input maps do not correspond to supported input formats. Please adjust your inputs.")
