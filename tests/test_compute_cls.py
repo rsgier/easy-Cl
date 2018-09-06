@@ -52,12 +52,13 @@ def test_compute_cls():
     assert len(cl_test.cl[0]) == 48
     assert len(cl_test.cl[1]) == 48
     assert len(cl_test.cl[2]) == 48
-    assert cl_test.cl_type == [u'cl_EE', u'cl_EB', u'cl_BB']
+    assert cl_test.cl_type == [u'cl_EE', u'cl_EB', u'cl_BE', u'cl_BB']
     assert cl_test.input_maps_type == [u'EB', u'EB']
     assert cl_test.l.all() == np.arange(48).all()
     assert np.allclose(np.sum(cl_test.cl[0]), 19295.27012030074)
     assert np.allclose(np.sum(cl_test.cl[1]), 9647.63506015037)
-    assert np.allclose(np.sum(cl_test.cl[2]), 4823.817530075185)
+    #todo add a test for element [2]
+    assert np.allclose(np.sum(cl_test.cl[3]), 4823.817530075185)
 
     # unit tests for map_type s2-s2
 

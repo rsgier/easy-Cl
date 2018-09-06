@@ -34,7 +34,8 @@ class ComputeCl(object):
             s0: scalar fields, e.g. kappa, delta, or temperature
             s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
                 where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
-            (EB: E & B mode decomposition)
+            EB: input maps are already decomposed into E & B modes. map entry in 2 elements list. map[0] - E-mode
+            and map[1] is the B-mode. returns EE, EB, BE, BB correlation functions.
 
         """
 
@@ -46,9 +47,10 @@ class ComputeCl(object):
         elif map1.map_type == 'EB' and map2.map_type == 'EB':
             cl_EE = np.array(hp.sphtfunc.anafast(map1.w * map1.map[0], map2.w * map2.map[0]))
             cl_EB = np.array(hp.sphtfunc.anafast(map1.w * map1.map[0], map2.w * map2.map[1]))
+            cl_BE = np.array(hp.sphtfunc.anafast(map1.w * map1.map[1], map2.w * map2.map[0]))
             cl_BB = np.array(hp.sphtfunc.anafast(map1.w * map1.map[1], map2.w * map2.map[1]))
             l = np.arange(len(cl_EE))
-            cl_out = cl_data(l=l, cl=[cl_EE, cl_EB, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BB'],
+            cl_out = cl_data(l=l, cl=[cl_EE, cl_EB, cl_BE, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BE','cl_BB'],
                                  input_maps_type=['EB', 'EB'])
 
         elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
@@ -65,7 +67,8 @@ class ComputeCl(object):
         # TODO: check commutative property of E and B fields
         # if the same map is used twice (for auto-correlations) -> some output cls are the same
 
-        elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
+        elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or \
+                                map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
 
             if map1.map_type.lower() == 's2':
                 dummie_map = np.zeros(len(map2.map))
@@ -84,7 +87,8 @@ class ComputeCl(object):
                              cl_type=['cl_TE', 'cl_TB'],
                              input_maps_type=['s0', 's2'])
 
-        elif map1.map_type == 'EB' and map2.map_type.lower() == 's0' or map1.map_type.lower() == 's0' and map2.map_type == 'EB':
+        elif map1.map_type == 'EB' and map2.map_type.lower() == 's0' or \
+                                map1.map_type.lower() == 's0' and map2.map_type == 'EB':
 
             if map1.map_type == 'EB':
                 cl_TE = hp.sphtfunc.anafast(map2.w * map2.map, map1.w * map1.map[0])
@@ -100,7 +104,7 @@ class ComputeCl(object):
                              input_maps_type=['s0', 'EB'])
 
         else:
-            sys.exit("Error: Input files do not correspond to supported input file-formats. Please adjust your input file.")
+            sys.exit("Error: Input maps do not correspond to supported input formats. Please adjust your inputs.")
         return cl_out
 
 
