@@ -58,10 +58,13 @@ class ComputeCl(object):
 
             cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
                 hp.sphtfunc.anafast((dummie_map, map1.w * map1.map[0], map1.w * map1.map[1]),
-                                    (dummie_map, map2.w * map2.map[0], map1.w * map2.map[1])))
+                                    (dummie_map, map2.w * map2.map[0], map2.w * map2.map[1])))
+
+            #Todo make sure we include BE, even dummy
+            cl_BE = None # this is not yet calculated
 
             l = np.arange(len(cl_TT))
-            cl_out = cl_data(l=l, cl=[cl_EE, cl_EB, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BB'],
+            cl_out = cl_data(l=l, cl=[cl_EE, cl_EB, cl_BE, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BE','cl_BB'],
                                  input_maps_type=['s2', 's2'])
 
         # TODO: check commutative property of E and B fields
@@ -75,6 +78,7 @@ class ComputeCl(object):
                 cl_TT, cl_EE, cl_BB, cl_TE, cl_EB, cl_TB = np.array(
                     hp.sphtfunc.anafast((map2.w * map2.map, dummie_map, dummie_map),
                                         (dummie_map, map1.w * map1.map[0], map1.w * map1.map[1])))
+                # can the two dummie_maps be removed from the first entry?
 
             else:
                 dummie_map = np.zeros(len(map1.map))
@@ -86,6 +90,7 @@ class ComputeCl(object):
             cl_out = cl_data(l=l, cl=[cl_TE, cl_TB],
                              cl_type=['cl_TE', 'cl_TB'],
                              input_maps_type=['s0', 's2'])
+            #todo think whether we wnat to track the order of s0 and s2?
 
         elif map1.map_type == 'EB' and map2.map_type.lower() == 's0' or \
                                 map1.map_type.lower() == 's0' and map2.map_type == 'EB':
