@@ -26,14 +26,16 @@ class ComputeCl(object):
         :param map2: input named tuple containing the second map with weights and the type.
         :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
 
-        The named tuple format used assumes that the data is stored using something like:
+            The named tuple format used assumes that the data is stored using something like:
             maps = collections.namedtuple('maps', ['map','w','type'])
             m1 = maps(map = map, w = weightmap, map_type = 's0')
+            Type indicates the map_type of fields stored by the maps. Currently we have:
 
-        Type indicates the map_type of fields stored by the maps. Currents we have:
             s0: scalar fields, e.g. kappa, delta, or temperature
+
             s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
-                where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
+            where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
+
             EB: input maps are already decomposed into E & B modes. map entry in 2 elements list. map[0] - E-mode
             and map[1] is the B-mode. returns EE, EB, BE, BB correlation functions.
 

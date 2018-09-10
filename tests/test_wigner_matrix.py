@@ -35,12 +35,11 @@ def test_wigner_matrix(one):
     l = 5
 
     KM = KernelMatrix()
-    M = KM.kernelmatrix(maskps, l, l)
+    M = KM.kernelmatrix(l, maskps)
 
     assert M.ndim == 2
-    assert M.shape == (5,5)
-    assert np.allclose(np.linalg.det(M), 0.9998981674926122)
-
+    assert M.shape == (6,6)
+    assert np.allclose(np.linalg.det(M), 0.9998778028302306)
 
     assert one == 1
 
