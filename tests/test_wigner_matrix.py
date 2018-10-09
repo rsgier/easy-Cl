@@ -11,7 +11,7 @@ import numpy as np
 from ECl.kernel_matrix import KernelMatrix
 
 
-def test_wigner_matrix(one):
+def test_wigner_matrix():
 
     NSIDE = 16
     map_mask = np.ones(hp.nside2npix(NSIDE))
