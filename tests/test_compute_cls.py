@@ -7,14 +7,13 @@ Tests for `ECl` module.
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
-import pytest
-#import ECl
 import numpy as np
 import collections as cl
 import healpy as hp
 from ECl.compute_cls import ComputeCl
 
 CCl = ComputeCl()
+
 
 def test_compute_cls_s0_s0():
 
@@ -35,6 +34,7 @@ def test_compute_cls_s0_s0():
     assert cl_test.input_maps_type == [u's0', u's0']
     assert cl_test.l.all() == np.arange(48).all()
     assert np.allclose(np.sum(cl_test.cl), 19295.27012030074)
+
 
 def test_compute_cls_EB_EB():
 
@@ -87,6 +87,7 @@ def test_compute_cls_s2_s2():
     assert np.allclose(np.sum(cl_test.cl[2]), 1753.1273340783282)
     assert np.allclose(np.sum(cl_test.cl[3]), 876.5793557271364)
 
+
 def test_compute_cls_s2_s0():
     NSIDE = 16
     maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
@@ -118,6 +119,7 @@ def test_compute_cls_s2_s0():
     assert cl_test.l.all() == np.arange(48).all()
     assert np.allclose(np.sum(cl_test.cl[0]), 0.1298539491556816)
     assert np.allclose(np.sum(cl_test.cl[1]), 0.06492697457784082)
+
 
 def test_compute_cls_EB_s0():
     NSIDE = 16

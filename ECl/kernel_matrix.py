@@ -5,16 +5,13 @@
 # System imports
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
-import numpy as np
 
 import numpy as np
 import healpy as hp
-from sympy.physics.wigner import wigner_3j
 import time
 
 dtype = np.int8
 
-#path = '/Volumes/ipa/refreg/experiments/herbelj/projects/mccl_DES/DR1/runs/008__update_y1/surveys/des000v000/cls_output/maps/map___EG=counts.fits'
 
 class KernelMatrix(object):
     """

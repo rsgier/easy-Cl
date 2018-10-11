@@ -10,7 +10,7 @@ sphinx
 coverage
 sphinx-pynpoint-theme
 tox
+
 numpy
 healpy==1.11
-scipy
-sympy
+numba
