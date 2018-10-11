@@ -8,10 +8,8 @@ from __future__ import (print_function, division, absolute_import,
 import numpy as np
 import healpy as hp
 from collections import namedtuple
-import sys
 
 cl_input = namedtuple('maps', ['map', 'w', 'map_type'])
-cl_output = namedtuple('cl', ['l', 'cl', 'cl_type', 'input_maps_type'])
 
 
 class ComputeCl(object):
@@ -60,7 +58,10 @@ class ComputeCl(object):
         if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
             cl_TT = np.array(hp.sphtfunc.anafast(map1_w, map2_w))
             l = np.arange(len(cl_TT))
-            cl_out = cl_output(l=l, cl=cl_TT, cl_type='cl_TT', input_maps_type=['s0', 's0'])
+            cl_out = dict(l=l,
+                          cl_TT=cl_TT,
+                          cl_type=['cl_TT'],
+                          input_maps_type=['s0', 's0'])
 
         elif map1.map_type == 'EB' and map2.map_type == 'EB':
             cl_EE = np.array(hp.sphtfunc.anafast(map1_0_w, map2_0_w))
@@ -68,8 +69,13 @@ class ComputeCl(object):
             cl_BE = np.array(hp.sphtfunc.anafast(map1_1_w, map2_0_w))
             cl_BB = np.array(hp.sphtfunc.anafast(map1_1_w, map2_1_w))
             l = np.arange(len(cl_EE))
-            cl_out = cl_output(l=l, cl=[cl_EE, cl_EB, cl_BE, cl_BB], cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
-                               input_maps_type=['EB', 'EB'])
+            cl_out = dict(l=l,
+                          cl_EE=cl_EE,
+                          cl_EB=cl_EB,
+                          cl_BE=cl_BE,
+                          cl_BB=cl_BB,
+                          cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
+                          input_maps_type=['EB', 'EB'])
 
         elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
             dummie_map = np.zeros(len(map1.map[0]))
@@ -83,8 +89,13 @@ class ComputeCl(object):
                                     (dummie_map, map1_0_w, map1_1_w)))
 
             l = np.arange(len(cl_T1T2))
-            cl_out = cl_output(l=l, cl=[cl_E1E2, cl_E1B2, cl_E2B1, cl_B1B2], cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
-                               input_maps_type=['s2', 's2'])
+            cl_out = dict(l=l,
+                          cl_EE=cl_E1E2,
+                          cl_EB=cl_E1B2,
+                          cl_BE=cl_E2B1,
+                          cl_BB=cl_B1B2,
+                          cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
+                          input_maps_type=['s2', 's2'])
 
         elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or \
                                 map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
@@ -103,9 +114,11 @@ class ComputeCl(object):
                                     (dummie_map, Q_map, U_map)))
 
             l = np.arange(len(cl_TT))
-            cl_out = cl_output(l=l, cl=[cl_TE, cl_TB],
-                               cl_type=['cl_TE', 'cl_TB'],
-                               input_maps_type=type_var)
+            cl_out = dict(l=l,
+                          cl_TE=cl_TE,
+                          cl_TB=cl_TB,
+                          cl_type=['cl_TE', 'cl_TB'],
+                          input_maps_type=type_var)
 
             # can the two dummie_maps be removed from the first entry?
             # -> no: alm and alm2 must have the same number of spectra
@@ -123,13 +136,13 @@ class ComputeCl(object):
 
             cl_TE, cl_TB = hp.sphtfunc.anafast(T_map, E_map), hp.sphtfunc.anafast(T_map, B_map)
             l = np.arange(len(cl_TE))
-            cl_out = cl_output(l=l, cl=[cl_TE, cl_TB],
-                               cl_type=['cl_TE', 'cl_TB'],
-                               input_maps_type=type_var)
+            cl_out = dict(l=l,
+                          cl_TE=cl_TE,
+                          cl_TB=cl_TB,
+                          cl_type=['cl_TE', 'cl_TB'],
+                          input_maps_type=type_var)
 
         else:
-            sys.exit("Error: Input maps do not correspond to supported input formats. Please adjust your inputs.")
+            raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
+
         return cl_out
-
-
-
