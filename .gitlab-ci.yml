@@ -19,7 +19,7 @@ tests:
         - python
     script:
         - pyenv versions
-        - pyenv local $(latest_python 2.7) $(latest_python 3.6)
+        - pyenv local $(latest_python 3.6)
         - tox -r -vv -i https://cosmo-pypi.phys.ethz.ch/simple
     stage: test_code
     artifacts:
