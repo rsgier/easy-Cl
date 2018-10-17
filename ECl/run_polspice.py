@@ -40,7 +40,7 @@ def _write_maps_and_weights(map1, map2):
     path_weights_1 = 'weights1.fits'
     path_map_2 = 'map2.fits'
     path_weights_2 = 'weights2.fits'
-    hp_kwargs = dict(nest=False, fits_IDL=False, coord='c', overwrite=True)
+    hp_kwargs = dict(nest=False, fits_IDL=False, coord='C', overwrite=True)
 
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
         m1 = map1.map
