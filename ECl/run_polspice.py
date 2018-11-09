@@ -48,15 +48,15 @@ def _write_maps_and_weights(map1, map2):
 
     elif map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
         m1 = [map1.map] + [np.ones_like(map1.map)] * 2
-        m2 = [np.ones_like(map2.map[0]), -map2.map[0], map2.map[1]]
+        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0':
-        m1 = [np.ones_like(map1.map[0]), -map1.map[0], map1.map[1]]
+        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
         m2 = [map2.map] + [np.ones_like(map2.map)] * 2
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
-        m1 = [np.ones_like(map1.map[0]), -map1.map[0], map1.map[1]]
-        m2 = [np.ones_like(map2.map[0]), -map2.map[0], map2.map[1]]
+        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
+        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
 
     else:
         raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
