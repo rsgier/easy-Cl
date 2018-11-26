@@ -22,7 +22,10 @@ def execute_command_theaded(command, n_threads):
     """
     env = os.environ.copy()
     env['OMP_NUM_THREADS'] = str(n_threads)
-    subprocess.run(shlex.split(command), env=env)
+    try:
+        subprocess.run(shlex.split(command), env=env)
+    except Exception as err:
+        subprocess.Popen(shlex.split(command), env=env)
 
 
 def _write_maps_and_weights(map1, map2):
