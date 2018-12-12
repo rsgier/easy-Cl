@@ -12,7 +12,6 @@ import healpy as hp
 # this import allows for importing the appropriate input format to run_polspice from this script
 from .compute_cls import cl_input
 
-
 def execute_command_theaded(command, n_threads):
     """
     Execute a command using a defined number of OpenMP threads.
@@ -25,11 +24,12 @@ def execute_command_theaded(command, n_threads):
     # try:
     #     subprocess.run(shlex.split(command), env=env)
     # except Exception as err:
+    print(command)
     proc = subprocess.Popen(shlex.split(command), env=env)
     proc.wait()
 
 
-def _write_maps_and_weights(map1, map2):
+def _write_maps_and_weights(map1, map2, signflip_e1=1):
     """
     Write maps and weights to disk such that they can be read by PolSpice.
     :param map1: named tuple containing the first map with weights and the type
@@ -52,15 +52,15 @@ def _write_maps_and_weights(map1, map2):
 
     elif map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
         m1 = [map1.map] + [np.ones_like(map1.map)] * 2
-        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
+        m2 = [np.ones_like(map2.map[0]), signflip_e1*map2.map[0], map2.map[1]]
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0':
-        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
+        m1 = [np.ones_like(map1.map[0]), signflip_e1*map1.map[0], map1.map[1]]
         m2 = [map2.map] + [np.ones_like(map2.map)] * 2
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
-        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
-        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
+        m1 = [np.ones_like(map1.map[0]), signflip_e1*map1.map[0], map1.map[1]]
+        m2 = [np.ones_like(map2.map[0]), signflip_e1*map2.map[0], map2.map[1]]
 
     else:
         raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
@@ -93,7 +93,8 @@ def create_polspice_command(path_map_1, path_weights_1, path_map_2, path_weights
                                                                                                 path_cls)
 
     for arg, value in polspice_args.items():
-        command += ' -{} {}'.format(arg, value)
+        if arg!='signflip_e1':
+            command += ' -{} {}'.format(arg, value)
 
     return command
 
@@ -154,8 +155,11 @@ def run_polspice(map1, map2, n_threads=1, **polspice_args):
     :return: pseudo angular power spectra based on input types
     """
 
+    if 'signflip_e1' not in polspice_args:
+        polspice_args['signflip_e1']=1
+
     # Write maps and weight files to disk
-    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2)
+    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2, signflip_e1=polspice_args['signflip_e1'])
 
     # Set polarization and decouple parameter according to input
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
