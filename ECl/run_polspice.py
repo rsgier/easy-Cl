@@ -28,8 +28,12 @@ def execute_command_theaded(command, n_threads):
     proc = subprocess.Popen(shlex.split(command), env=env)
     proc.wait()
 
+def flip_map(m):
 
-def _write_maps_and_weights(map1, map2, signflip_e1=1):
+    select = m != hp.UNSEEN
+    m[select]*=-1
+
+def _write_maps_and_weights(map1, map2, signflip_e1=False):
     """
     Write maps and weights to disk such that they can be read by PolSpice.
     :param map1: named tuple containing the first map with weights and the type
@@ -46,21 +50,27 @@ def _write_maps_and_weights(map1, map2, signflip_e1=1):
     path_weights_2 = 'weights2.fits'
     hp_kwargs = dict(nest=False, fits_IDL=False, coord='C', overwrite=True)
 
+    if (signflip_e1==True):
+        if (map1.map_type=='s2'):
+            flip_map(map1.map[0])
+        if (map2.map_type=='s2'):
+            flip_map(map2.map[0])
+
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
         m1 = map1.map
         m2 = map2.map
 
     elif map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
         m1 = [map1.map] + [np.ones_like(map1.map)] * 2
-        m2 = [np.ones_like(map2.map[0]), signflip_e1*map2.map[0], map2.map[1]]
+        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0':
-        m1 = [np.ones_like(map1.map[0]), signflip_e1*map1.map[0], map1.map[1]]
+        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
         m2 = [map2.map] + [np.ones_like(map2.map)] * 2
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
-        m1 = [np.ones_like(map1.map[0]), signflip_e1*map1.map[0], map1.map[1]]
-        m2 = [np.ones_like(map2.map[0]), signflip_e1*map2.map[0], map2.map[1]]
+        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
+        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
 
     else:
         raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
@@ -156,7 +166,7 @@ def run_polspice(map1, map2, n_threads=1, **polspice_args):
     """
 
     if 'signflip_e1' not in polspice_args:
-        polspice_args['signflip_e1']=1
+        polspice_args['signflip_e1']=False
 
     # Write maps and weight files to disk
     path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2, signflip_e1=polspice_args['signflip_e1'])
