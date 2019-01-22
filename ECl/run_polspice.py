@@ -25,11 +25,22 @@ def execute_command_theaded(command, n_threads):
     subprocess.run(shlex.split(command), env=env)
 
 
-def _write_maps_and_weights(map1, map2):
+def _flip_map(m):
+    """
+    Flips the sign of all non-empty pixels in-place
+    :param m: input healpix map (numpy array)
+    :return:
+    """
+    select = m != hp.UNSEEN
+    m[select] *= -1
+
+
+def _write_maps_and_weights(map1, map2, signflip_e1):
     """
     Write maps and weights to disk such that they can be read by PolSpice.
     :param map1: named tuple containing the first map with weights and the type
     :param map2: named tuple containing the second map with weights and the type.
+    :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities
     :return path_map_1: path to first map
     :return path_weights_1: path to first weights
     :return path_map_2: path to second map
@@ -41,6 +52,12 @@ def _write_maps_and_weights(map1, map2):
     path_map_2 = 'map2.fits'
     path_weights_2 = 'weights2.fits'
     hp_kwargs = dict(nest=False, fits_IDL=False, coord='C', overwrite=True)
+
+    if signflip_e1:
+        if map1.map_type == 's2':
+            _flip_map(map1.map[0])
+        if map2.map_type == 's2':
+            _flip_map(map2.map[0])
 
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
         m1 = map1.map
@@ -140,18 +157,19 @@ def read_polspice_output(path, spin1, spin2):
     return cl_out
 
 
-def run_polspice(map1, map2, n_threads=1, **polspice_args):
+def run_polspice(map1, map2, signflip_e1=False, n_threads=1, **polspice_args):
     """
     Run PolSpice on input maps.
     :param map1: named tuple containing the first map with weights and the type
     :param map2: named tuple containing the second map with weights and the type
+    :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities
     :param n_threads: number of threads to use for PolSpice
     :param polspice_args: arguments to pass to PolSpice
     :return: pseudo angular power spectra based on input types
     """
 
     # Write maps and weight files to disk
-    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2)
+    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2, signflip_e1)
 
     # Set polarization and decouple parameter according to input
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
