@@ -28,7 +28,7 @@ def execute_command_theaded(command, n_threads):
 def _flip_map(m):
     """
     Flips the sign of all non-empty pixels in-place
-    :param m: input healpix map (numpy array)
+    :param m: input healpix map (numpy ndarray)
     :return:
     """
     select = m != hp.UNSEEN
@@ -56,7 +56,10 @@ def _write_maps_and_weights(map1, map2, signflip_e1):
     if signflip_e1:
         if map1.map_type == 's2':
             _flip_map(map1.map[0])
-        if map2.map_type == 's2':
+        if map2.map_type == 's2' and not (map2.map[0] is map1.map[0]):
+            # for the first component of the second map, we first check whether it points to the same object in memory
+            # as the first component of the first map; if it does, we must not flip, since we would flip the same map
+            # twice in this case
             _flip_map(map2.map[0])
 
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
