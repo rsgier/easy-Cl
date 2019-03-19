@@ -8,11 +8,14 @@ from __future__ import (print_function, division, absolute_import,
 import numpy as np
 import healpy as hp
 
+from ECl import utils
 
-def run_anafast(map1, map2):
+
+def run_anafast(map1, map2, signflip_e1=False):
     """
     :param map1: input named tuple containing the first map with weights and the type.
     :param map2: input named tuple containing the second map with weights and the type.
+    :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities.
     :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
 
     The named tuple format used assumes that the data is stored using something like:
@@ -29,7 +32,11 @@ def run_anafast(map1, map2):
     and map[1] is the B-mode. returns EE, EB, BE, BB correlation functions.
     """
 
-    # Take care of weights
+    # Signflips
+    if signflip_e1:
+        utils.flip_maps(map1, map2)
+
+    # Apply weights
     if map1.map_type.lower() == 's0':
         map1_w = map1.map * map1.w
     else:

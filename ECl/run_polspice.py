@@ -9,6 +9,8 @@ import subprocess
 import numpy as np
 import healpy as hp
 
+from ECl import utils
+
 
 def execute_command_theaded(command, n_threads):
     """
@@ -22,21 +24,11 @@ def execute_command_theaded(command, n_threads):
     subprocess.run(shlex.split(command), env=env)
 
 
-def _flip_map(m):
-    """
-    Flips the sign of all non-empty pixels in-place
-    :param m: input healpix map (numpy ndarray)
-    :return:
-    """
-    select = m != hp.UNSEEN
-    m[select] *= -1
-
-
 def _write_maps_and_weights(map1, map2, signflip_e1):
     """
     Write maps and weights to disk such that they can be read by PolSpice.
     :param map1: named tuple containing the first map with weights and the type
-    :param map2: named tuple containing the second map with weights and the type.
+    :param map2: named tuple containing the second map with weights and the type
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities
     :return path_map_1: path to first map
     :return path_weights_1: path to first weights
@@ -51,13 +43,7 @@ def _write_maps_and_weights(map1, map2, signflip_e1):
     hp_kwargs = dict(nest=False, fits_IDL=False, coord='C', overwrite=True)
 
     if signflip_e1:
-        if map1.map_type == 's2':
-            _flip_map(map1.map[0])
-        if map2.map_type == 's2' and not (map2.map[0] is map1.map[0]):
-            # for the first component of the second map, we first check whether it points to the same object in memory
-            # as the first component of the first map; if it does, we must not flip, since we would flip the same map
-            # twice in this case
-            _flip_map(map2.map[0])
+        utils.flip_maps(map1, map2)
 
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
         m1 = map1.map
@@ -127,8 +113,7 @@ def read_polspice_output(path, spin1, spin2):
     polspice_out = np.genfromtxt(path)
     l = polspice_out[:, 0]
     cls = polspice_out[:, 1:]
-    cl_out = dict(l=l,
-                  input_maps_type=[spin1, spin2])
+    cl_out = dict(l=l, input_maps_type=[spin1, spin2])
 
     # Map PolSpice output to dictionary entries
     if spin1 == 's0' and spin2 == 's0':
