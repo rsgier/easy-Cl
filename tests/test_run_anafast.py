@@ -8,16 +8,16 @@ from __future__ import (print_function, division, absolute_import,
 
 import pytest
 import numpy as np
-import collections as cl
 import healpy as hp
-from ECl.compute_cls import ComputeCl
+from ECl.run_anafast import run_anafast
+from ECl.utils import get_maps_input_format
 
-CCl = ComputeCl()
+NSIDE = 16
 
 
 def test_compute_cls_s0_s0():
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = np.ones(hp.nside2npix(NSIDE))
@@ -25,7 +25,7 @@ def test_compute_cls_s0_s0():
     m1 = maps(map=map1, w=w_map, map_type='S0')
     m2 = maps(map=map2, w=w_map, map_type='S0')
 
-    cl_test = CCl.computecl(m1, m2)
+    cl_test = run_anafast(m1, m2)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert len(cl_test['cl_TT']) == 48
@@ -34,9 +34,9 @@ def test_compute_cls_s0_s0():
     assert np.allclose(np.sum(cl_test['cl_TT']), 19295.27012030074)
 
 
-def test_compute_cls_EB_EB():
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+def test_compute_cls_eb_be():
+
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
@@ -44,7 +44,7 @@ def test_compute_cls_EB_EB():
     m1 = maps(map=map1, w=w_map, map_type='EB')
     m2 = maps(map=map2, w=w_map, map_type='EB')
 
-    cl_test = CCl.computecl(m1, m2)
+    cl_test = run_anafast(m1, m2)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_EE', u'cl_EB', u'cl_BE', u'cl_BB']
@@ -60,8 +60,8 @@ def test_compute_cls_EB_EB():
 
 
 def test_compute_cls_s2_s2():
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
@@ -69,7 +69,7 @@ def test_compute_cls_s2_s2():
     m1 = maps(map=map1, w=w_map, map_type='s2')
     m2 = maps(map=map2, w=w_map, map_type='s2')
 
-    cl_test = CCl.computecl(m1, m2)
+    cl_test = run_anafast(m1, m2)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_EE', u'cl_EB', u'cl_BE', u'cl_BB']
@@ -85,8 +85,8 @@ def test_compute_cls_s2_s2():
 
 
 def test_compute_cls_s2_s0():
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
@@ -94,7 +94,7 @@ def test_compute_cls_s2_s0():
     m1 = maps(map=map1, w=w_map, map_type='s2')
     m2 = maps(map=map2, w=w_map, map_type='s0')
 
-    cl_test = CCl.computecl(m1, m2)
+    cl_test = run_anafast(m1, m2)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
@@ -106,7 +106,7 @@ def test_compute_cls_s2_s0():
     assert np.allclose(np.sum(cl_test['cl_TE']), 0.1298539491556816)
     assert np.allclose(np.sum(cl_test['cl_TB']), 0.06492697457784082)
 
-    cl_test = CCl.computecl(m2, m1)
+    cl_test = run_anafast(m2, m1)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
@@ -119,9 +119,9 @@ def test_compute_cls_s2_s0():
     assert np.allclose(np.sum(cl_test['cl_TB']), 0.06492697457784082)
 
 
-def test_compute_cls_EB_s0():
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+def test_compute_cls_eb_s0():
+
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
@@ -129,7 +129,7 @@ def test_compute_cls_EB_s0():
     m1 = maps(map=map1, w=w_map, map_type='EB')
     m2 = maps(map=map2, w=w_map, map_type='s0')
 
-    cl_test = CCl.computecl(m1, m2)
+    cl_test = run_anafast(m1, m2)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
@@ -141,7 +141,7 @@ def test_compute_cls_EB_s0():
     assert np.allclose(np.sum(cl_test['cl_TE']), 19295.27012030074)
     assert np.allclose(np.sum(cl_test['cl_TB']), 9647.63506015037)
 
-    cl_test = CCl.computecl(m2, m1)
+    cl_test = run_anafast(m2, m1)
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
@@ -156,8 +156,7 @@ def test_compute_cls_EB_s0():
 
 def test_compute_cls_invalid():
 
-    NSIDE = 16
-    maps = cl.namedtuple('maps', ['map', 'w', 'map_type'])
+    maps = get_maps_input_format()
     w_map = np.ones(hp.nside2npix(NSIDE))
 
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
@@ -166,4 +165,4 @@ def test_compute_cls_invalid():
     m2 = maps(map=map2, w=w_map, map_type='s0')
 
     with pytest.raises(ValueError):
-        CCl.computecl(m2, m1)
+        run_anafast(m2, m1)

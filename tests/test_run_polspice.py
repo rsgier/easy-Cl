@@ -11,7 +11,7 @@ import healpy as hp
 from mock import patch
 import pytest
 
-from ECl import run_polspice
+from ECl import run_polspice, utils
 
 
 def create_testmap(nside, spin):
@@ -23,7 +23,7 @@ def create_testmap(nside, spin):
     if spin == 's2':
         m = m, m
 
-    return run_polspice.cl_input(map=m, w=w, map_type=spin)
+    return utils.get_maps_input_format()(map=m, w=w, map_type=spin)
 
 
 def test_polspice_command():

@@ -9,9 +9,6 @@ import subprocess
 import numpy as np
 import healpy as hp
 
-# this import allows for importing the appropriate input format to run_polspice from this script
-from .compute_cls import cl_input
-
 
 def execute_command_theaded(command, n_threads):
     """
