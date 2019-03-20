@@ -11,11 +11,12 @@ import healpy as hp
 from ECl import utils
 
 
-def run_anafast(map1, map2, signflip_e1=False):
+def run_anafast(map1, map2, signflip_e1=False, lmax=None):
     """
     :param map1: input named tuple containing the first map with weights and the type.
     :param map2: input named tuple containing the second map with weights and the type.
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities.
+    :param lmax: maximum l up to which power spectra are computed
     :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
 
     The named tuple format used assumes that the data is stored using something like:
@@ -51,7 +52,7 @@ def run_anafast(map1, map2, signflip_e1=False):
 
     # Compute power spectrum
     if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
-        cl_tt = np.array(hp.sphtfunc.anafast(map1_w, map2_w))
+        cl_tt = np.array(hp.sphtfunc.anafast(map1_w, map2_w, lmax=lmax))
         l = np.arange(len(cl_tt))
         cl_out = dict(l=l,
                       cl_TT=cl_tt,
@@ -59,10 +60,10 @@ def run_anafast(map1, map2, signflip_e1=False):
                       input_maps_type=['s0', 's0'])
 
     elif map1.map_type == 'EB' and map2.map_type == 'EB':
-        cl_ee = np.array(hp.sphtfunc.anafast(map1_0_w, map2_0_w))
-        cl_eb = np.array(hp.sphtfunc.anafast(map1_0_w, map2_1_w))
-        cl_be = np.array(hp.sphtfunc.anafast(map1_1_w, map2_0_w))
-        cl_bb = np.array(hp.sphtfunc.anafast(map1_1_w, map2_1_w))
+        cl_ee = np.array(hp.sphtfunc.anafast(map1_0_w, map2_0_w, lmax=lmax))
+        cl_eb = np.array(hp.sphtfunc.anafast(map1_0_w, map2_1_w, lmax=lmax))
+        cl_be = np.array(hp.sphtfunc.anafast(map1_1_w, map2_0_w, lmax=lmax))
+        cl_bb = np.array(hp.sphtfunc.anafast(map1_1_w, map2_1_w, lmax=lmax))
         l = np.arange(len(cl_ee))
         cl_out = dict(l=l,
                       cl_EE=cl_ee,
@@ -77,11 +78,13 @@ def run_anafast(map1, map2, signflip_e1=False):
 
         cl_t1t2, cl_e1e2, cl_b1b2, cl_t1e2, cl_e1b2, cl_t1b2 = np.array(
             hp.sphtfunc.anafast((dummie_map, map1_0_w, map1_1_w),
-                                (dummie_map, map2_0_w, map2_1_w)))
+                                (dummie_map, map2_0_w, map2_1_w),
+                                lmax=lmax))
 
         _, _, _, _, cl_e2b1, _ = np.array(
             hp.sphtfunc.anafast((dummie_map, map2_0_w, map2_1_w),
-                                (dummie_map, map1_0_w, map1_1_w)))
+                                (dummie_map, map1_0_w, map1_1_w),
+                                lmax=lmax))
 
         l = np.arange(len(cl_t1t2))
         cl_out = dict(l=l,
@@ -105,7 +108,8 @@ def run_anafast(map1, map2, signflip_e1=False):
             type_var = ['s0', 's2']
 
         _, _, _, cl_te, _, cl_tb = np.array(hp.sphtfunc.anafast((t_map, dummie_map, dummie_map),
-                                                                (dummie_map, q_map, u_map)))
+                                                                (dummie_map, q_map, u_map),
+                                                                lmax=lmax))
 
         l = np.arange(len(cl_te))
         cl_out = dict(l=l,
@@ -128,8 +132,8 @@ def run_anafast(map1, map2, signflip_e1=False):
             t_map, e_map, b_map = map1_w, map2_0_w, map2_1_w
             type_var = ['s0', 'EB']
 
-        cl_te = hp.sphtfunc.anafast(t_map, e_map)
-        cl_tb = hp.sphtfunc.anafast(t_map, b_map)
+        cl_te = hp.sphtfunc.anafast(t_map, e_map, lmax=lmax)
+        cl_tb = hp.sphtfunc.anafast(t_map, b_map, lmax=lmax)
         l = np.arange(len(cl_te))
         cl_out = dict(l=l,
                       cl_TE=cl_te,
