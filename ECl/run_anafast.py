@@ -11,11 +11,13 @@ import healpy as hp
 from ECl import utils
 
 
-def run_anafast(map1, map2, signflip_e1=False, lmax=None):
+def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
     """
     :param map1: input named tuple containing the first map with weights and the type.
     :param map2: input named tuple containing the second map with weights and the type.
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities.
+    :param compute_be: whether to also compute the BE-modes in case two spin-2 maps; setting this to true effectively
+                       doubles the runtime for this case
     :param lmax: maximum l up to which power spectra are computed
     :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
 
@@ -81,19 +83,21 @@ def run_anafast(map1, map2, signflip_e1=False, lmax=None):
                                 (dummie_map, map2_0_w, map2_1_w),
                                 lmax=lmax))
 
-        _, _, _, _, cl_e2b1, _ = np.array(
-            hp.sphtfunc.anafast((dummie_map, map2_0_w, map2_1_w),
-                                (dummie_map, map1_0_w, map1_1_w),
-                                lmax=lmax))
-
         l = np.arange(len(cl_t1t2))
         cl_out = dict(l=l,
                       cl_EE=cl_e1e2,
                       cl_EB=cl_e1b2,
-                      cl_BE=cl_e2b1,
                       cl_BB=cl_b1b2,
-                      cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
+                      cl_type=['cl_EE', 'cl_EB', 'cl_BB'],
                       input_maps_type=['s2', 's2'])
+
+        if compute_be:
+            _, _, _, _, cl_e2b1, _ = np.array(
+                hp.sphtfunc.anafast((dummie_map, map2_0_w, map2_1_w),
+                                    (dummie_map, map1_0_w, map1_1_w),
+                                    lmax=lmax))
+            cl_out['cl_BE'] = cl_e2b1
+            cl_out['cl_type'].append('cl_BE')
 
     elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or \
             map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':

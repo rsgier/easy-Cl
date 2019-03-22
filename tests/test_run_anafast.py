@@ -69,19 +69,27 @@ def test_compute_cls_s2_s2():
     m1 = maps(map=map1, w=w_map, map_type='s2')
     m2 = maps(map=map2, w=w_map, map_type='s2')
 
-    cl_test = run_anafast(m1, m2)
+    cl_no_be = run_anafast(m1, m2)
 
-    assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_EE', u'cl_EB', u'cl_BE', u'cl_BB']
-    assert cl_test['input_maps_type'] == [u's2', u's2']
+    assert np.all(cl_no_be['l'] == np.arange(48))
+    assert cl_no_be['cl_type'] == ['cl_EE', 'cl_EB', 'cl_BB']
+    assert cl_no_be['input_maps_type'] == ['s2', 's2']
 
-    for cl_type in cl_test['cl_type']:
-        assert len(cl_test[cl_type]) == 48
+    for cl_type in cl_no_be['cl_type']:
+        assert len(cl_no_be[cl_type]) == 48
 
-    assert np.allclose(np.sum(cl_test['cl_EE']), 3506.2703568446277)
-    assert np.allclose(np.sum(cl_test['cl_EB']), 1753.127334078328)
-    assert np.allclose(np.sum(cl_test['cl_BE']), 1753.1273340783282)
-    assert np.allclose(np.sum(cl_test['cl_BB']), 876.5793557271364)
+    assert np.allclose(np.sum(cl_no_be['cl_EE']), 3506.2703568446277)
+    assert np.allclose(np.sum(cl_no_be['cl_EB']), 1753.127334078328)
+    assert np.allclose(np.sum(cl_no_be['cl_BB']), 876.5793557271364)
+
+    cl_be = run_anafast(m1, m2, compute_be=True)
+
+    for key in cl_no_be:
+        if key != 'cl_type':
+            assert np.array_equal(cl_no_be[key], cl_be[key])
+
+    assert cl_be['cl_type'] == ['cl_EE', 'cl_EB', 'cl_BB', 'cl_BE']
+    assert np.allclose(np.sum(cl_be['cl_BE']), 1753.1273340783282)
 
 
 def test_compute_cls_s2_s0():

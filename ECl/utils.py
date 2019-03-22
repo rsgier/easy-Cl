@@ -32,7 +32,7 @@ def flip_maps(map1, map2):
     """
 
     if map1.map_type == 's2':
-            _flip_map(map1.map[0])
+        _flip_map(map1.map[0])
 
     if map2.map_type == 's2' and not (map2.map[0] is map1.map[0]):
         # for the first component of the second map, we first check whether it points to the same object in memory
