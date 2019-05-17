@@ -118,7 +118,7 @@ def _coupling_matrix(l2_max, weights_cl):
 def mode_coupling_matrix(l_max, weights_cl):
     """
     Computes the mode coupling matrix.
-    :param l_max: size of the desired kernel matrix (e.g. l2_max=1500 for a (1501,1501)-matrix)
+    :param l_max: size of the desired kernel matrix (e.g. l_max=1500 for a (1501,1501)-matrix)
     :param weights_cl: power spectum of the weights used to compute matrix elements.
     :return: kernel matrix.
     """
