@@ -14,5 +14,6 @@ mock
 
 numpy
 healpy
+numba
 pyshtools
 pywigxjpf
