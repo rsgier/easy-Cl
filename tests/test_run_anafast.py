@@ -1,11 +1,5 @@
 # Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
 
-"""
-Tests for `ECl` module.
-"""
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
-
 import pytest
 import numpy as np
 import healpy as hp
