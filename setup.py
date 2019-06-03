@@ -42,9 +42,8 @@ except IOError:
 
 requires = ['numpy',
             'healpy',
-            'numba']  # during runtime
-tests_require = ['pytest>=2.3',
-                 'mock']  # for testing
+            'numba',
+            'pyshtools']
 
 PACKAGE_PATH = os.path.abspath(os.path.join(__file__, os.pardir))
 
@@ -72,6 +71,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
     ],
-    tests_require=tests_require,
     cmdclass={'test': PyTest},
 )

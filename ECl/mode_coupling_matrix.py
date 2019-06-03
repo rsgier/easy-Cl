@@ -2,141 +2,225 @@
 
 # Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
 
-# System imports
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
-
-import time
 import numpy as np
-import numba as nb
+import healpy as hp
+import pyshtools
 
 from ECl import utils, run_anafast
 
 
-@nb.jit(nopython=True)
-def readout(facs, ele):
-    out = np.empty_like(ele, dtype=facs.dtype)
-    for i in range(ele.shape[0]):
-        out[i] = facs[ele[i]]
-    return out
+def wigner3j_range(l1, l2, m1, m2, m3):
+    """
+    Computes the Wigner symbols
+    l1 l2 l3
+    m1 m2 m3
+    for all allowed values of l3. This range is given by
+    l3_min = max(|l1 - l2|, |m3|) and l3_max = l1 + l2.
+    :param l1: l1
+    :param l2: l2
+    :param m1: m1
+    :param m2: m2
+    :param m3: m3
+    :return: numpy-array with Wigner symbols for allowed range, minimum l3, maximum l3
+    """
+    wigner3j, l3_min, l3_max = pyshtools.utils.Wigner3j(l1, l2, m3, m1, m2)
+    return wigner3j[:(l3_max - l3_min + 1)], l3_min, l3_max
 
 
-@nb.jit(nopython=True)
-def _coupling_matrix(l2_max, weights_cl):
+class ModeCouplingMatrixCalc:
+    """
+    Class for computing mode coupling matrices.
+    """
 
-    coupling_matrix = np.zeros((l2_max + 1, l2_max + 1))
-    l2_full = np.arange(l2_max + 1)
+    def __init__(self):
 
-    facs_full = np.zeros(2 * (2 * l2_max + 1) + 2)
-    facs_full[2:] = np.cumsum(np.log(np.arange(2, 2 * (2 * l2_max + 1) + 2)))
+        self.wig3j_s0 = None
+        self.wig3j_s2 = None
+        self.wig3j_s0_sq = None
+        self.wig3j_s2_sq = None
+        self.wig3j_s0_x_s2 = None
 
-    n_sym_max = 2 * l2_max + 1
-    ele_full = np.zeros((n_sym_max + 1, l2_max + 1), dtype=np.int64)
-    ele_full += np.arange(n_sym_max + 1).reshape(n_sym_max + 1, 1)
+        self.l3_min_s0 = None
+        self.l3_min_s2 = None
+        self.l3_min_s0_x_s2 = None
+        self.l3_max = None
 
-    for l1 in range(l2_max + 1):
+        self.ee_ee_factor = False
+        self.ee_bb_factor = False
 
-        # make a l_2 int array
-        l2 = l2_full[l1:]
+        self.element_calculators = dict(TT_TT=self.tt_tt,
+                                        TE_TE=self.te_te,
+                                        TB_TB=self.te_te,
+                                        EE_EE=self.ee_ee,
+                                        BB_BB=self.ee_ee,
+                                        EE_BB=self.ee_bb,
+                                        BB_EE=self.ee_bb,
+                                        EB_EB=self.eb_eb)
 
-        # number of symbols to calculate
-        n_sym = l1 + l2_max - np.abs(l1 - l2_max) + 1
+        polarizatons = ['TT', 'TE', 'TB', 'EE', 'BB', 'EB']
+        for pol1 in polarizatons:
+            for pol2 in polarizatons:
+                pol = '{}_{}'.format(pol1, pol2)
+                if pol not in self.element_calculators:
+                    self.element_calculators[pol] = self.zero
 
-        # get minimum and maximum l3
-        l3_min = np.abs(l1 - l2)
+    def zero(self, *args):
+        return 0
 
-        # get l
-        l_min = l1 + l2 + l3_min
+    def tt_tt(self, l1, l2, cl_mask_x_l3):
 
-        # get all log factorials from 0! to L+1!
-        facs = facs_full[:2 * (l1 + l2_max + 1) + 2]
+        if self.wig3j_s0 is None:
+            self.wig3j_s0, self.l3_min_s0, self.l3_max = wigner3j_range(l1, l2, 0, 0, 0)
+        if self.wig3j_s0_sq is None:
+            self.wig3j_s0_sq = self.wig3j_s0 ** 2
 
-        # get the offset (the symbol is 0 for L%2 == 1)
-        off = np.ones_like(l_min)
-        off[l_min % 2 == 0] = 0
+        m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s0: (self.l3_max + 1)] * self.wig3j_s0_sq)
 
-        # build the wigner symbols in log space
-        ele_ = ele_full[:n_sym + 1, :off.size]
+        return m_l1_l2
 
-        # get all (L+1)!
-        ele = ele_[:n_sym + 1] + l_min + off + 1
-        wigner_log_1 = -readout(facs, ele)[::2, :]
+    def te_te(self, l1, l2, cl_mask_x_l3):
 
-        # get all (L/2)
-        ele = ele_[:int(n_sym / 2) + 1] + (l_min + off) // 2
-        wigner_log_2 = readout(facs, ele)
+        if self.wig3j_s0 is None:
+            self.wig3j_s0, self.l3_min_s0, self.l3_max = wigner3j_range(l1, l2, 0, 0, 0)
+        if self.wig3j_s2 is None:
+            self.wig3j_s2, self.l3_min_s2, self.l3_max = wigner3j_range(l1, l2, 2, -2, 0)
+        if self.wig3j_s0_x_s2 is None:
+            self.l3_min_s0_x_s2 = max(self.l3_min_s0, self.l3_min_s2)
+            self.wig3j_s0_x_s2 = self.wig3j_s0[self.l3_min_s0_x_s2 - self.l3_min_s0:] * \
+                                 self.wig3j_s2[self.l3_min_s0_x_s2 - self.l3_min_s2:]
 
-        # get all values for L-2l1
-        ele = ele_[:n_sym + 1] + l_min + off - 2 * l1
-        wigner_log_1 += readout(facs, ele)[::2]
+        m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s0_x_s2: (self.l3_max + 1)] * self.wig3j_s0_x_s2)
 
-        # get all values for L-2l2
-        ele = ele_[:n_sym + 1] + l_min + off - 2 * l2
-        wigner_log_1 += readout(facs, ele)[::2]
+        return m_l1_l2
 
-        # get all values for L-2l3
-        ele = ele_[:n_sym + 1]
-        wigner_log_1 += readout(facs, ele)[::2][::-1]
+    def ee_ee(self, l1, l2, cl_mask_x_l3):
 
-        # get all values for L/2-l1
-        ele = ele_[:int(n_sym / 2) + 1] + (l_min + off) // 2 - l1
-        wigner_log_2 -= readout(facs, ele)
+        if self.wig3j_s2 is None:
+            self.wig3j_s2, self.l3_min_s2, self.l3_max = wigner3j_range(l1, l2, 2, -2, 0)
+        if self.wig3j_s2_sq is None:
+            self.wig3j_s2_sq = self.wig3j_s2 ** 2
+        if self.ee_ee_factor is None:
+            self.ee_ee_factor = np.arange(self.l3_min_s2, self.l3_max + 1) + l1 + l2
+            select_even = self.ee_ee_factor % 2 == 0
+            self.ee_ee_factor[select_even] = 1  # we use a 1 here and instead double the global prefactor
+            self.ee_ee_factor[~select_even] = 0
 
-        # get all values for L/2-l2
-        ele = ele_[:int(n_sym / 2) + 1] + (l_min + off) // 2 - l2
-        wigner_log_2 -= readout(facs, ele)
+        m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s2: (self.l3_max + 1)] * self.ee_ee_factor * self.wig3j_s2_sq)
 
-        # get all values for L-2l3
-        ele = ele_[:int(n_sym / 2) + 1]
-        wigner_log_2 -= readout(facs, ele)[::-1]
+        return m_l1_l2
 
-        # calculate the wigner logs
-        wigner_log = 0.5 * wigner_log_1 + wigner_log_2
-        # square in log space
-        wigner_log *= 2.0
-        # get the wigner symbols
-        wigner = np.exp(wigner_log)
+    def ee_bb(self, l1, l2, cl_mask_x_l3):
 
-        # get the all the l3 for the calculated mat
-        all_l3 = 2 * ele_[:int(n_sym / 2) + 1] + l3_min + off
+        if self.wig3j_s2 is None:
+            self.wig3j_s2, self.l3_min_s2, self.l3_max = wigner3j_range(l1, l2, 2, -2, 0)
+        if self.wig3j_s2_sq is None:
+            self.wig3j_s2_sq = self.wig3j_s2 ** 2
+        if self.ee_bb_factor is None:
+            self.ee_bb_factor = np.arange(self.l3_min_s2, self.l3_max + 1) + l1 + l2
+            select_uneven = self.ee_bb_factor % 2 == 1
+            self.ee_bb_factor[select_uneven] = -1  # we use a 1 here and instead double the global prefactor
+            self.ee_bb_factor[~select_uneven] = 0
 
-        # apply factor 2l3+1
-        wigner *= 2.0 * all_l3 + 1.0
+        m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s2: (self.l3_max + 1)] * self.ee_bb_factor * self.wig3j_s2_sq)
 
-        # apply to power spectrum
-        coupling_matrix[l1, l1:] = np.sum(readout(weights_cl, all_l3) * wigner, axis=0)
+        return m_l1_l2
 
-    # mirror it
-    coupling_matrix += np.triu(coupling_matrix, k=1).T
+    def eb_eb(self, l1, l2, cl_mask_x_l3):
 
-    # get factor 2l2+1/4pi
-    coupling_matrix *= (np.arange(l2_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
+        if self.wig3j_s2 is None:
+            self.wig3j_s2, self.l3_min_s2, self.l3_max = wigner3j_range(l1, l2, 2, -2, 0)
+        if self.wig3j_s2_sq is None:
+            self.wig3j_s2_sq = self.wig3j_s2 ** 2
 
-    return coupling_matrix
+        m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s2: (self.l3_max + 1)] * self.wig3j_s2_sq)
+
+        return m_l1_l2
+
+    def __call__(self, l_max, cls_weights, polarizations):
+        """
+        Computes mode coupling matrices for given weight power spectra and polarizations.
+        :param l_max: Maximum multipole to include in mode coupling matrix
+        :param cls_weights: power spectra of the weight maps
+        :param polarizations: polarizations, e.g. TT_TT, EE_EE, etc., same length as cls_weights
+        :return: mode coupling matrices, shape: (len(cls_weights), l_max + 1, l_max + 1)
+        """
+
+        # check that input makes sense
+        assert len(cls_weights) == len(polarizations), 'Number of weights Cls does not match number of polarizations'
+
+        for i, cl in enumerate(cls_weights):
+            assert cl.size >= 2 * l_max + 1, 'Weight Cl number {} does not have enough multipoles for input ' \
+                                             'l_max'.format(i + 1)
+
+        for pol in polarizations:
+            assert pol in self.element_calculators, 'Unknown polarization {}'.format(pol)
+
+        # initialize output array
+        coupling_matrices = np.zeros((len(cls_weights), l_max + 1, l_max + 1))
+
+        # multiply weight power spectra by (2 * l3 + 1)
+        cls_weights_x_2l3p1 = np.vstack([cl[:2 * l_max + 1] for cl in cls_weights])
+        cls_weights_x_2l3p1 *= 2 * np.arange(2 * l_max + 1) + 1
+
+        # only compute upper triangle
+        for l1 in range(l_max + 1):
+            for l2 in range(l1, l_max + 1):
+
+                # all symbols need to be computed for this l1, l2 combination
+                self.wig3j_s0 = None
+                self.wig3j_s2 = None
+                self.wig3j_s0_sq = None
+                self.wig3j_s2_sq = None
+                self.wig3j_s0_x_s2 = None
+                self.ee_ee_factor = None
+                self.ee_bb_factor = None
+
+                # compute matrix elements for l1, l2 combination
+                for i_pol, pol in enumerate(polarizations):
+                    coupling_matrices[i_pol][l1, l2] = self.element_calculators[pol](l1, l2, cls_weights_x_2l3p1[i_pol])
+
+        # mirror matrices
+        for cm in coupling_matrices:
+            cm += np.triu(cm, k=1).T
+
+        # apply prefactor (2 * l2 + 1) / (4 * pi)
+        coupling_matrices *= (np.arange(l_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
+
+        return coupling_matrices
 
 
-def mode_coupling_matrix(l_max, weights_cl):
+def mode_coupling_matrix(l_max, weights_cls, polarizations):
     """
     Computes the mode coupling matrix.
-    :param l_max: size of the desired kernel matrix (e.g. l_max=1500 for a (1501,1501)-matrix)
-    :param weights_cl: power spectum of the weights used to compute matrix elements.
-    :return: kernel matrix.
+    :param l_max: size of the desired matrix (e.g. l_max=1500 for a (1501, 1501)-matrix)
+    :param weights_cls: power spectra of the weights used to compute matrix elements (either single spectrum or
+    list/array or spectra)
+    :param polarizations: polarizations, either single value or list of values
+    :return: mode coupling matrix / matrices
     """
-    print('calculating mode coupling matrix...')
-    start = time.time()
-    wigner = _coupling_matrix(l_max, weights_cl)
-    end = time.time()
-    print('computation took {} s.'.format(end - start))
-    return wigner
+
+    single_matrix = isinstance(polarizations, str)
+    if single_matrix:
+        weights_cls = [weights_cls]
+        polarizations = [polarizations]
+
+    coupling_matrix_calc = ModeCouplingMatrixCalc()
+    coupling_matrices = coupling_matrix_calc(l_max, weights_cls, polarizations)
+
+    if single_matrix:
+        coupling_matrices = coupling_matrices[0]
+
+    return coupling_matrices
 
 
-def weights_power_spectrum(weights_1, weights_2=None, l_max=None):
+def weights_power_spectrum(weights_1, weights_2=None, l_max=None, correct_pixwin=True):
     """
     Computes the auto- or cross power spectrum of one or two weights map(s).
     :param weights_1: weight map
     :param weights_2: second weight map, if None, the result is an auto-spectrum, else it is a cross-spectrum
     :param l_max: maximum l to consider for the mode coupling matrix, the necessary maximum l for the weight power
                   spectrum is then twice this value
+    :param correct_pixwin: whether to correct for the pixel window function, default: True
     :return: peusdo angular power spectrum
     """
 
@@ -152,5 +236,9 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None):
     m2 = maps(map=weights_2, w=1, map_type='s0')
 
     cl = run_anafast.run_anafast(map1=m1, map2=m2, lmax=l_max)['cl_TT']
+
+    if correct_pixwin:
+        pixwin = hp.pixwin(hp.npix2nside(weights_1.size))
+        cl /= pixwin[:cl.size] ** 2
 
     return cl
