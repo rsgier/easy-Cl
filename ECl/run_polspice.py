@@ -24,11 +24,15 @@ def execute_command_theaded(command, n_threads):
     subprocess.run(shlex.split(command), env=env)
 
 
-def _write_maps_and_weights(map1, map2, signflip_e1):
+def _write_maps_and_weights(map_1, map_1_type, weights_1, map_2, map_2_type, weights_2, signflip_e1):
     """
     Write maps and weights to disk such that they can be read by PolSpice.
-    :param map1: named tuple containing the first map with weights and the type
-    :param map2: named tuple containing the second map with weights and the type
+    :param map_1: first map, either one or two 1-dim. numpy-arrays
+    :param map_1_type: type of first map, either s0 or s2
+    :param weights_1: weights for first map, 1-dim. numpy array
+    :param map_2: second map for cross-cls, either one or two 1-dim. numpy-arrays
+    :param map_2_type: type of second map, either s0 or s2
+    :param weights_2: weights for second map, 1-dim. numpy array
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities
     :return path_map_1: path to first map
     :return path_weights_1: path to first weights
@@ -43,32 +47,32 @@ def _write_maps_and_weights(map1, map2, signflip_e1):
     hp_kwargs = dict(nest=False, fits_IDL=False, coord='C', overwrite=True)
 
     if signflip_e1:
-        utils.flip_maps(map1, map2)
+        utils.flip_s2_maps(map_1, map_1_type, map_2, map_2_type)
 
-    if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
-        m1 = map1.map
-        m2 = map2.map
+    if map_1_type == 's0' and map_2_type == 's0':
+        m1 = map_1
+        m2 = map_2
 
-    elif map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
-        m1 = [map1.map] + [np.ones_like(map1.map)] * 2
-        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
+    elif map_1_type == 's0' and map_2_type == 's2':
+        m1 = [map_1] + [np.ones_like(map_1)] * 2
+        m2 = [np.ones_like(map_2[0]), map_2[0], map_2[1]]
 
-    elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0':
-        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
-        m2 = [map2.map] + [np.ones_like(map2.map)] * 2
+    elif map_1_type == 's2' and map_2_type == 's0':
+        m1 = [np.ones_like(map_1[0]), map_1[0], map_1[1]]
+        m2 = [map_2] + [np.ones_like(map_2)] * 2
 
-    elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
-        m1 = [np.ones_like(map1.map[0]), map1.map[0], map1.map[1]]
-        m2 = [np.ones_like(map2.map[0]), map2.map[0], map2.map[1]]
+    elif map_1_type == 's2' and map_2_type == 's2':
+        m1 = [np.ones_like(map_1[0]), map_1[0], map_1[1]]
+        m2 = [np.ones_like(map_2[0]), map_2[0], map_2[1]]
 
     else:
-        raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
+        raise ValueError('Unsupported input maps format: {} and {}'.format(map_1_type, map_2_type))
 
     # Write maps and weights to disk
     hp.write_map(filename=path_map_1, m=m1, **hp_kwargs)
     hp.write_map(filename=path_map_2, m=m2, **hp_kwargs)
-    hp.write_map(filename=path_weights_1, m=map1.w, **hp_kwargs)
-    hp.write_map(filename=path_weights_2, m=map2.w, **hp_kwargs)
+    hp.write_map(filename=path_weights_1, m=weights_1, **hp_kwargs)
+    hp.write_map(filename=path_weights_2, m=weights_2, **hp_kwargs)
 
     return path_map_1, path_weights_1, path_map_2, path_weights_2
 
@@ -142,22 +146,41 @@ def read_polspice_output(path, spin1, spin2):
     return cl_out
 
 
-def run_polspice(map1, map2, signflip_e1=False, n_threads=1, **polspice_args):
+def run_polspice(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, weights_2=None, signflip_e1=False,
+                 n_threads=1, **polspice_args):
     """
     Run PolSpice on input maps.
-    :param map1: named tuple containing the first map with weights and the type
-    :param map2: named tuple containing the second map with weights and the type
+    :param map_1: first map, either one or two 1-dim. numpy-arrays
+    :param map_1_type: type of first map, either s0 or s2
+    :param map_2: second map for cross-cls, either one or two 1-dim. numpy-arrays, optional
+    :param map_2_type: type of second map, either s0 or s2, must be set if map_2 is provided
+    :param weights_1: weights for first map, 1-dim. numpy array, optional
+    :param weights_2: weights for second map, 1-dim. numpy array, optional
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities
     :param n_threads: number of threads to use for PolSpice
     :param polspice_args: arguments to pass to PolSpice
     :return: pseudo angular power spectra based on input types
     """
 
+    # Check that input is sensible
+    map_1, map_1_type, weights_1, map_2, map_2_type, weights_2 = utils.get_cl_input(map_1,
+                                                                                    map_1_type,
+                                                                                    map_2=map_2,
+                                                                                    map_2_type=map_2_type,
+                                                                                    weights_1=weights_1,
+                                                                                    weights_2=weights_2)
+
     # Write maps and weight files to disk
-    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map1, map2, signflip_e1)
+    path_map_1, path_weights_1, path_map_2, path_weights_2 = _write_maps_and_weights(map_1,
+                                                                                     map_1_type,
+                                                                                     weights_1,
+                                                                                     map_2,
+                                                                                     map_2_type,
+                                                                                     weights_2,
+                                                                                     signflip_e1)
 
     # Set polarization and decouple parameter according to input
-    if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
+    if map_1_type == 's0' and map_2_type == 's0':
         polspice_args['polarization'] = 'NO'
     else:
         polspice_args['polarization'] = 'YES'
@@ -176,7 +199,7 @@ def run_polspice(map1, map2, signflip_e1=False, n_threads=1, **polspice_args):
     execute_command_theaded(command, n_threads)
 
     # Read output
-    cls = read_polspice_output(path_cls, map1.map_type.lower(), map2.map_type.lower())
+    cls = read_polspice_output(path_cls, map_1_type, map_2_type)
 
     # Delete files written to disk
     os.remove(path_map_1)

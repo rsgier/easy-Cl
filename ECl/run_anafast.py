@@ -1,59 +1,66 @@
-#! /usr/bin/env python
-
 # Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
 
-# System imports
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
 import numpy as np
 import healpy as hp
 
 from ECl import utils
 
 
-def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
+def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, weights_2=None, signflip_e1=False,
+                compute_be=False, lmax=None):
     """
-    :param map1: input named tuple containing the first map with weights and the type.
-    :param map2: input named tuple containing the second map with weights and the type.
+    Run anafast on input maps of given type.
+
+    :param map_1: first map, either one or two 1-dim. numpy-arrays
+    :param map_1_type: type of first map, either s0, s2 or EB
+    :param map_2: second map for cross-cls, either one or two 1-dim. numpy-arrays, optional
+    :param map_2_type: type of second map, either s0, s2 or EB, must be set if map_2 is provided
+    :param weights_1: weights for first map, 1-dim. numpy array, optional
+    :param weights_2: weights for second map, 1-dim. numpy array, optional
     :param signflip_e1: whether to flip the sign of the first map in case of s2-quantities.
     :param compute_be: whether to also compute the BE-modes in case two spin-2 maps; setting this to true effectively
                        doubles the runtime for this case
     :param lmax: maximum l up to which power spectra are computed
-    :return: cross and / or auto pseudo angular power spectra based on the maps and weights used.
+    :return: auto- or cross pseudo angular power spectra based on the maps and weights used.
 
-    The named tuple format used assumes that the data is stored using something like:
-    maps = collections.namedtuple('maps', ['map','w','type'])
-    m1 = maps(map = map, w = weightmap, map_type = 's0')
-    Type indicates the map_type of fields stored by the maps. Currently we have:
+    The currently supported map types are:
 
     s0: scalar fields, e.g. kappa, delta, or temperature
 
-    s2: spin-2 fields such as gamma1, gamma2. If this is used then map should be a two element list,
+    s2: spin-2 fields such as gamma1, gamma2. If this is used then the map should be a two element list,
     where the entries are healpix numpy arrays. w should be one array, i.e. the same weight map for both.
 
     EB: input maps are already decomposed into E & B modes. map entry in 2 elements list. map[0] - E-mode
     and map[1] is the B-mode. returns EE, EB, BE, BB correlation functions.
     """
 
+    # Check that input is sensible
+    map_1, map_1_type, weights_1, map_2, map_2_type, weights_2 = utils.get_cl_input(map_1,
+                                                                                    map_1_type,
+                                                                                    map_2=map_2,
+                                                                                    map_2_type=map_2_type,
+                                                                                    weights_1=weights_1,
+                                                                                    weights_2=weights_2)
+
     # Signflips
     if signflip_e1:
-        utils.flip_maps(map1, map2)
+        utils.flip_s2_maps(map_1, map_1_type, map_2, map_2_type)
 
     # Apply weights
-    if map1.map_type.lower() == 's0':
-        map1_w = map1.map * map1.w
+    if map_1_type == 's0':
+        map1_w = map_1 * weights_1
     else:
-        map1_0_w = map1.map[0] * map1.w
-        map1_1_w = map1.map[1] * map1.w
+        map1_0_w = map_1[0] * weights_1
+        map1_1_w = map_1[1] * weights_1
 
-    if map2.map_type.lower() == 's0':
-        map2_w = map2.map * map2.w
+    if map_2_type == 's0':
+        map2_w = map_2 * weights_2
     else:
-        map2_0_w = map2.map[0] * map2.w
-        map2_1_w = map2.map[1] * map2.w
+        map2_0_w = map_2[0] * weights_2
+        map2_1_w = map_2[1] * weights_2
 
     # Compute power spectrum
-    if map1.map_type.lower() == 's0' and map2.map_type.lower() == 's0':
+    if map_1_type == 's0' and map_2_type == 's0':
         cl_tt = np.array(hp.sphtfunc.anafast(map1_w, map2_w, lmax=lmax))
         l = np.arange(len(cl_tt))
         cl_out = dict(l=l,
@@ -61,7 +68,7 @@ def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
                       cl_type=['cl_TT'],
                       input_maps_type=['s0', 's0'])
 
-    elif map1.map_type == 'EB' and map2.map_type == 'EB':
+    elif map_1_type == 'EB' and map_2_type == 'EB':
         cl_ee = np.array(hp.sphtfunc.anafast(map1_0_w, map2_0_w, lmax=lmax))
         cl_eb = np.array(hp.sphtfunc.anafast(map1_0_w, map2_1_w, lmax=lmax))
         cl_be = np.array(hp.sphtfunc.anafast(map1_1_w, map2_0_w, lmax=lmax))
@@ -75,8 +82,8 @@ def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
                       cl_type=['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB'],
                       input_maps_type=['EB', 'EB'])
 
-    elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's2':
-        dummie_map = np.zeros(len(map1.map[0]))
+    elif map_1_type == 's2' and map_2_type == 's2':
+        dummie_map = np.zeros_like(map1_0_w)
 
         cl_t1t2, cl_e1e2, cl_b1b2, cl_t1e2, cl_e1b2, cl_t1b2 = np.array(
             hp.sphtfunc.anafast((dummie_map, map1_0_w, map1_1_w),
@@ -99,15 +106,15 @@ def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
             cl_out['cl_BE'] = cl_e2b1
             cl_out['cl_type'].append('cl_BE')
 
-    elif map1.map_type.lower() == 's2' and map2.map_type.lower() == 's0' or \
-            map1.map_type.lower() == 's0' and map2.map_type.lower() == 's2':
+    elif map_1_type == 's2' and map_2_type == 's0' or \
+            map_1_type == 's0' and map_2_type == 's2':
 
-        if map1.map_type.lower() == 's2':
-            dummie_map = np.zeros(len(map2.map))
+        if map_1_type == 's2':
+            dummie_map = np.zeros_like(map2_w)
             q_map, u_map, t_map = map1_0_w, map1_1_w, map2_w
             type_var = ['s2', 's0']
         else:
-            dummie_map = np.zeros(len(map1.map))
+            dummie_map = np.zeros_like(map1_w)
             q_map, u_map, t_map = map2_0_w, map2_1_w, map1_w
             type_var = ['s0', 's2']
 
@@ -125,10 +132,10 @@ def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
         # can the two dummie_maps be removed from the first entry?
         # -> no: alm and alm2 must have the same number of spectra
 
-    elif map1.map_type == 'EB' and map2.map_type.lower() == 's0' or \
-            map1.map_type.lower() == 's0' and map2.map_type == 'EB':
+    elif map_1_type == 'EB' and map_2_type == 's0' or \
+            map_1_type == 's0' and map_2_type == 'EB':
 
-        if map1.map_type == 'EB':
+        if map_1_type == 'EB':
             t_map, e_map, b_map = map2_w, map1_0_w, map1_1_w
             type_var = ['EB', 's0']
 
@@ -146,6 +153,6 @@ def run_anafast(map1, map2, signflip_e1=False, compute_be=False, lmax=None):
                       input_maps_type=type_var)
 
     else:
-        raise ValueError('Unsupported input maps format: {} and {}'.format(map1.map_type, map2.map_type))
+        raise ValueError('Unsupported input maps format: {} and {}'.format(map_1_type, map_2_type))
 
     return cl_out

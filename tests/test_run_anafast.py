@@ -1,48 +1,36 @@
 # Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
 
-import pytest
 import numpy as np
 import healpy as hp
 from ECl.run_anafast import run_anafast
-from ECl.utils import get_maps_input_format
 
 NSIDE = 16
 
 
 def test_compute_cls_s0_s0():
 
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
     map1 = np.ones(hp.nside2npix(NSIDE))
     map2 = np.arange(hp.nside2npix(NSIDE))
-    m1 = maps(map=map1, w=w_map, map_type='S0')
-    m2 = maps(map=map2, w=w_map, map_type='S0')
 
-    cl_test = run_anafast(m1, m2)
+    cl_test = run_anafast(map1, 's0', map_2=map2, map_2_type='s0')
 
     assert np.all(cl_test['l'] == np.arange(48))
     assert len(cl_test['cl_TT']) == 48
-    assert cl_test['cl_type'] == [u'cl_TT']
-    assert cl_test['input_maps_type'] == [u's0', u's0']
+    assert cl_test['cl_type'] == ['cl_TT']
+    assert cl_test['input_maps_type'] == ['s0', 's0']
     assert np.allclose(np.sum(cl_test['cl_TT']), 19295.27012030074)
 
 
 def test_compute_cls_eb_be():
 
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
     map2 = [np.arange(hp.nside2npix(NSIDE)), np.arange(hp.nside2npix(NSIDE)) * 0.5]
-    m1 = maps(map=map1, w=w_map, map_type='EB')
-    m2 = maps(map=map2, w=w_map, map_type='EB')
 
-    cl_test = run_anafast(m1, m2)
+    cl_test = run_anafast(map1, 'EB', map_2=map2, map_2_type='EB')
 
     assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_EE', u'cl_EB', u'cl_BE', u'cl_BB']
-    assert cl_test['input_maps_type'] == [u'EB', u'EB']
+    assert cl_test['cl_type'] == ['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB']
+    assert cl_test['input_maps_type'] == ['EB', 'EB']
 
     for cl_type in cl_test['cl_type']:
         assert len(cl_test[cl_type]) == 48
@@ -55,15 +43,10 @@ def test_compute_cls_eb_be():
 
 def test_compute_cls_s2_s2():
 
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
     map2 = [np.arange(hp.nside2npix(NSIDE)), np.arange(hp.nside2npix(NSIDE)) * 0.5]
-    m1 = maps(map=map1, w=w_map, map_type='s2')
-    m2 = maps(map=map2, w=w_map, map_type='s2')
 
-    cl_no_be = run_anafast(m1, m2)
+    cl_no_be = run_anafast(map1, 's2', map_2=map2, map_2_type='s2')
 
     assert np.all(cl_no_be['l'] == np.arange(48))
     assert cl_no_be['cl_type'] == ['cl_EE', 'cl_EB', 'cl_BB']
@@ -76,7 +59,7 @@ def test_compute_cls_s2_s2():
     assert np.allclose(np.sum(cl_no_be['cl_EB']), 1753.127334078328)
     assert np.allclose(np.sum(cl_no_be['cl_BB']), 876.5793557271364)
 
-    cl_be = run_anafast(m1, m2, compute_be=True)
+    cl_be = run_anafast(map1, 's2', map_2=map2, map_2_type='s2', compute_be=True)
 
     for key in cl_no_be:
         if key != 'cl_type':
@@ -88,19 +71,14 @@ def test_compute_cls_s2_s2():
 
 def test_compute_cls_s2_s0():
 
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
     map2 = np.arange(hp.nside2npix(NSIDE))
-    m1 = maps(map=map1, w=w_map, map_type='s2')
-    m2 = maps(map=map2, w=w_map, map_type='s0')
 
-    cl_test = run_anafast(m1, m2)
+    cl_test = run_anafast(map1, 's2', map_2=map2, map_2_type='s0')
 
     assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
-    assert cl_test['input_maps_type'] == [u's2', u's0']
+    assert cl_test['cl_type'] == ['cl_TE', 'cl_TB']
+    assert cl_test['input_maps_type'] == ['s2', 's0']
 
     for cl_type in cl_test['cl_type']:
         assert len(cl_test[cl_type]) == 48
@@ -108,11 +86,11 @@ def test_compute_cls_s2_s0():
     assert np.allclose(np.sum(cl_test['cl_TE']), 0.1298539491556816)
     assert np.allclose(np.sum(cl_test['cl_TB']), 0.06492697457784082)
 
-    cl_test = run_anafast(m2, m1)
+    cl_test = run_anafast(map2, 's0', map_2=map1, map_2_type='s2')
 
     assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
-    assert cl_test['input_maps_type'] == [u's0', u's2']
+    assert cl_test['cl_type'] == ['cl_TE', 'cl_TB']
+    assert cl_test['input_maps_type'] == ['s0', 's2']
 
     for cl_type in cl_test['cl_type']:
         assert len(cl_test[cl_type]) == 48
@@ -123,19 +101,14 @@ def test_compute_cls_s2_s0():
 
 def test_compute_cls_eb_s0():
 
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
     map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
     map2 = np.arange(hp.nside2npix(NSIDE))
-    m1 = maps(map=map1, w=w_map, map_type='EB')
-    m2 = maps(map=map2, w=w_map, map_type='s0')
 
-    cl_test = run_anafast(m1, m2)
+    cl_test = run_anafast(map1, 'EB', map_2=map2, map_2_type='s0')
 
     assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
-    assert cl_test['input_maps_type'] == [u'EB', u's0']
+    assert cl_test['cl_type'] == ['cl_TE', 'cl_TB']
+    assert cl_test['input_maps_type'] == ['EB', 's0']
 
     for cl_type in cl_test['cl_type']:
         assert len(cl_test[cl_type]) == 48
@@ -143,11 +116,11 @@ def test_compute_cls_eb_s0():
     assert np.allclose(np.sum(cl_test['cl_TE']), 19295.27012030074)
     assert np.allclose(np.sum(cl_test['cl_TB']), 9647.63506015037)
 
-    cl_test = run_anafast(m2, m1)
+    cl_test = run_anafast(map2, 's0', map_2=map1, map_2_type='EB')
 
     assert np.all(cl_test['l'] == np.arange(48))
-    assert cl_test['cl_type'] == [u'cl_TE', u'cl_TB']
-    assert cl_test['input_maps_type'] == [u's0', u'EB']
+    assert cl_test['cl_type'] == ['cl_TE', 'cl_TB']
+    assert cl_test['input_maps_type'] == ['s0', 'EB']
 
     for cl_type in cl_test['cl_type']:
         assert len(cl_test[cl_type]) == 48
@@ -155,16 +128,3 @@ def test_compute_cls_eb_s0():
     assert np.allclose(np.sum(cl_test['cl_TE']), 19295.27012030074)
     assert np.allclose(np.sum(cl_test['cl_TB']), 9647.63506015037)
 
-
-def test_compute_cls_invalid():
-
-    maps = get_maps_input_format()
-    w_map = np.ones(hp.nside2npix(NSIDE))
-
-    map1 = [np.ones(hp.nside2npix(NSIDE)), np.ones(hp.nside2npix(NSIDE)) * 0.5]
-    map2 = np.arange(hp.nside2npix(NSIDE))
-    m1 = maps(map=map1, w=w_map, map_type='invalid')
-    m2 = maps(map=map2, w=w_map, map_type='s0')
-
-    with pytest.raises(ValueError):
-        run_anafast(m2, m1)

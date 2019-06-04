@@ -224,18 +224,13 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None, correct_pixwin
     :return: peusdo angular power spectrum
     """
 
-    maps = utils.get_maps_input_format()
-
     if weights_2 is None:
         weights_2 = weights_1
 
     if l_max is not None:
         l_max *= 2
 
-    m1 = maps(map=weights_1, w=1, map_type='s0')
-    m2 = maps(map=weights_2, w=1, map_type='s0')
-
-    cl = run_anafast.run_anafast(map1=m1, map2=m2, lmax=l_max)['cl_TT']
+    cl = run_anafast.run_anafast(weights_1, 's0', map_2=weights_2, map_2_type='s0', lmax=l_max)['cl_TT']
 
     if correct_pixwin:
         pixwin = hp.pixwin(hp.npix2nside(weights_1.size))

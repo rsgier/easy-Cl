@@ -11,19 +11,18 @@ import healpy as hp
 from mock import patch
 import pytest
 
-from ECl import run_polspice, utils
+from ECl import run_polspice
 
 
 def create_testmap(nside, spin):
 
     npix = hp.nside2npix(nside)
     m = np.ones(npix)
-    w = np.ones(npix)
 
     if spin == 's2':
         m = m, m
 
-    return utils.get_maps_input_format()(map=m, w=w, map_type=spin)
+    return m
 
 
 def test_polspice_command():
@@ -53,15 +52,14 @@ def test_run_polspice_s0_s0():
     Tests running PolSpice for the spin combination s0, s0.
     """
 
-    map1 = create_testmap(16, 's0')
-    map2 = create_testmap(16, 's0')
+    map_1 = create_testmap(16, 's0')
 
     l_max = 10
     cls = np.stack((np.arange(l_max), np.zeros(l_max)), axis=-1)
     np.savetxt('cls.txt', cls)
 
     with patch('subprocess.run'):
-        cl_dict = run_polspice.run_polspice(map1, map2)
+        cl_dict = run_polspice.run_polspice(map_1, 's0')
 
     assert cl_dict['input_maps_type'] == ['s0', 's0']
     assert cl_dict['cl_type'] == ['cl_TT']
@@ -74,15 +72,15 @@ def test_run_polspice_s0_s2():
     Tests running PolSpice for the spin combination s0, s2.
     """
 
-    map1 = create_testmap(16, 's0')
-    map2 = create_testmap(16, 's2')
+    map_1 = create_testmap(16, 's0')
+    map_2 = create_testmap(16, 's2')
 
     l_max = 200
     cls = np.stack([np.arange(l_max)] + [np.full(l_max, -1) * i for i in range(9)], axis=-1)
     np.savetxt('cls.txt', cls)
 
     with patch('subprocess.run'):
-        cl_dict = run_polspice.run_polspice(map1, map2)
+        cl_dict = run_polspice.run_polspice(map_1, 's0', map_2=map_2, map_2_type='s2')
 
     assert cl_dict['input_maps_type'] == ['s0', 's2']
     assert cl_dict['cl_type'] == ['cl_TE', 'cl_TB']
@@ -96,15 +94,15 @@ def test_run_polspice_s2_s0():
     Tests running PolSpice for the spin combination s2, s0.
     """
 
-    map1 = create_testmap(16, 's2')
-    map2 = create_testmap(16, 's0')
+    map_1 = create_testmap(16, 's2')
+    map_2 = create_testmap(16, 's0')
 
     l_max = 5
     cls = np.stack([np.arange(l_max)] + [np.full(l_max, 4.39) * i for i in range(9)], axis=-1)
     np.savetxt('cls.txt', cls)
 
     with patch('subprocess.run'):
-        cl_dict = run_polspice.run_polspice(map1, map2)
+        cl_dict = run_polspice.run_polspice(map_1, 's2', map_2=map_2, map_2_type='s0')
 
     assert cl_dict['input_maps_type'] == ['s2', 's0']
     assert cl_dict['cl_type'] == ['cl_TE', 'cl_TB']
@@ -118,15 +116,14 @@ def test_run_polspice_s2_s2():
     Tests running PolSpice for the spin combination s2, s2.
     """
 
-    map1 = create_testmap(16, 's2')
-    map2 = create_testmap(16, 's2')
+    map_1 = create_testmap(16, 's2')
 
     l_max = 13
     cls = np.stack([np.arange(l_max)] + [np.full(l_max, 3.5) * i for i in range(9)], axis=-1)
     np.savetxt('cls.txt', cls)
 
     with patch('subprocess.run'):
-        cl_dict = run_polspice.run_polspice(map1, map2)
+        cl_dict = run_polspice.run_polspice(map_1, 's2')
 
     assert cl_dict['input_maps_type'] == ['s2', 's2']
     assert cl_dict['cl_type'] == ['cl_EE', 'cl_EB', 'cl_BE', 'cl_BB']
@@ -142,12 +139,10 @@ def test_run_polspice_invalid():
     Tests whether invalid spins result in an error.
     """
 
-    map1 = create_testmap(16, 's0')
-    map2 = create_testmap(16, 'invalid')
+    map_1 = create_testmap(16, 's0')
     with pytest.raises(ValueError):
-        run_polspice.run_polspice(map1, map2)
+        run_polspice.run_polspice(map_1, 's1')
 
-    map1 = create_testmap(16, 's1')
-    map2 = create_testmap(16, 's2')
+    map_2 = create_testmap(16, 's2')
     with pytest.raises(ValueError):
-        run_polspice.run_polspice(map1, map2)
+        run_polspice.run_polspice(map_1, 's0', map_2=map_2, map_2_type='s3')
