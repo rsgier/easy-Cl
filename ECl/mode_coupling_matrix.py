@@ -29,7 +29,11 @@ def wigner3j_range(l1, l2, m1, m2, m3):
 
 class ModeCouplingMatrixCalc:
     """
-    Class for computing mode coupling matrices.
+    Class for computing mode coupling matrices. This implementation follows [1] arXiv:astro-ph/0410394, eqs. (A12) -
+    (A17), and [2] arXiv:astro-ph/0302213, eqs. (A14) - (A17). Note that there is a mistake in [1], eq. (A15) (coupling
+    EE - BB). The sign of this matrix is wrong, the correct sign is given in [2], eq. (A17). Furthermore, note that
+    both [1] and [2] do not explicitly write factors of (2 * l3 + 1), which are included in the sums, c.f.
+    arXiv:astro-ph/0105302, eq. (A31).
     """
 
     def __init__(self):
@@ -118,7 +122,10 @@ class ModeCouplingMatrixCalc:
         if self.ee_bb_factor is None:
             self.ee_bb_factor = np.arange(self.l3_min_s2, self.l3_max + 1) + l1 + l2
             select_uneven = self.ee_bb_factor % 2 == 1
-            self.ee_bb_factor[select_uneven] = -1  # we use a 1 here and instead double the global prefactor
+            """the following line should be 
+            self.ee_bb_factor[select_uneven] = -1 
+            according to [1], however, this is the mistake mentioned above """
+            self.ee_bb_factor[select_uneven] = 1  # we use a 1 here and instead double the global prefactor
             self.ee_bb_factor[~select_uneven] = 0
 
         m_l1_l2 = np.sum(cl_mask_x_l3[self.l3_min_s2: (self.l3_max + 1)] * self.ee_bb_factor * self.wig3j_s2_sq)
