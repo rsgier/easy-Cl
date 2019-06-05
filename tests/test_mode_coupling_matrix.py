@@ -225,3 +225,34 @@ def test_weights_power_spectrum():
     assert cl_weights.size == 2 * l_max + 1
     cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, weights_2=weights_2, l_max=l_max, l2_max=l2_max)
     assert cl_weights.size == l_max + l2_max + 1
+
+
+def test_apply_pixwin_to_coupling_matrix():
+
+    # check for multiple matrices
+    coupling_matrices = np.ones((5, 10, 12))
+    polarizations = ['TT_TT', 'TE_TE', 'EE_EE', 'EE_BB', 'EB_EB']
+    nside = 32
+    pixwin_t, pixwin_eb = hp.pixwin(nside, pol=True)
+    pixwin_t = pixwin_t[:coupling_matrices.shape[1]]
+    pixwin_eb = pixwin_eb[:coupling_matrices.shape[1]]
+
+    coupling_matrices_x_pixwin = coupling_matrices.copy()
+    pixwins = [[pixwin_t, pixwin_t],
+               [pixwin_t, pixwin_eb],
+               [pixwin_eb, pixwin_eb],
+               [pixwin_eb, pixwin_eb],
+               [pixwin_eb, pixwin_eb]]
+
+    for pixwin, cm in zip(pixwins, coupling_matrices_x_pixwin):
+        for i in range(cm.shape[0]):
+            cm[i] *= pixwin[0][i] * pixwin[1][i]
+
+    mode_coupling_matrix.apply_pixwin_to_coupling_matrix(coupling_matrices, polarizations, nside)
+
+    assert np.array_equal(coupling_matrices, coupling_matrices_x_pixwin)
+
+    # check for one matrix
+    coupling_matrix = np.ones(coupling_matrices.shape[1:])
+    mode_coupling_matrix.apply_pixwin_to_coupling_matrix(coupling_matrix, polarizations[0], nside)
+    assert np.array_equal(coupling_matrix, coupling_matrices_x_pixwin[0])

@@ -6,7 +6,7 @@ import numpy as np
 import healpy as hp
 import pyshtools
 
-from ECl import utils, run_anafast
+from ECl import run_anafast
 
 
 def wigner3j_range(l1, l2, m1, m2, m3):
@@ -257,3 +257,39 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None, l2_max=None, c
         cl /= pixwin[:cl.size] ** 2
 
     return cl
+
+
+def apply_pixwin_to_coupling_matrix(coupling_matrices, polarizations, nside):
+    """
+    Applies healpix pixel window functions to mode coupling matrix such that the corresponding power losses are
+    included in the coupling matrices. The pixel window functions are applied in-place.
+    :param coupling_matrices: mode coupling matrices to which the pixel window functions will be applied, either
+                              a 2-dim. numpy-array (one matrix) or a 3-dim. numpy-array (multiple matrices) or a
+                              list/tuple of 2-dim. numpy-arrays (one or multiple matrices)
+    :param polarizations: polarizations of the mode coupling matrices, either a single string (one matrix) or a list
+                          of strings (one or multiple matrices); same input as for function mode_coupling_matrix
+    :param nside: nside of the pixel window functions
+    """
+
+    if isinstance(coupling_matrices, np.ndarray) and coupling_matrices.ndim == 2:
+        coupling_matrices = [coupling_matrices]
+
+        if isinstance(polarizations, str):
+            polarizations = [polarizations]
+
+    pixwin_t, pixwin_eb = hp.pixwin(nside, pol=True)
+
+    for cm, pol in zip(coupling_matrices, polarizations):
+
+        if pol[0] == 'T':
+            pixwin_1 = pixwin_t
+        else:
+            pixwin_1 = pixwin_eb
+
+        if pol[1] == 'T':
+            pixwin_2 = pixwin_t
+        else:
+            pixwin_2 = pixwin_eb
+
+        pixwin = pixwin_1[:cm.shape[0]] * pixwin_2[:cm.shape[0]]
+        cm *= pixwin.reshape(pixwin.size, 1)
