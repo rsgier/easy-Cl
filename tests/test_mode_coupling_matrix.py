@@ -90,131 +90,66 @@ def test_mode_coupling_matrix_basic():
     cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cls_weights, polarizations)
     assert cm.shape == (3, l_max + 1, l_max + 1)
 
-
-def test_mode_coupling_matrix_tt_tt():
-
-    l_max = 50
-    cl_weights = np.random.uniform(size=2 * l_max + 1)
-
-    cm_direct = np.zeros((l_max + 1, l_max + 1))
-
-    for l1 in range(l_max + 1):
-        for l2 in range(l_max + 1):
-
-            l3_min = abs(l1 - l2)
-            l3_max = l1 + l2
-
-            for l3 in range(l3_min, l3_max + 1):
-                cm_direct[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) ** 2
-
-    cm_direct *= (np.arange(l_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
-
-    cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, 'TT_TT')
-
-    assert np.allclose(cm_direct, cm)
+    cls_weights = np.ones((3, 2 * l_max + 1))
+    polarizations = ['TT_TT', 'EE_EE', 'EE_TT']
+    with pytest.raises(NotImplementedError):
+        mode_coupling_matrix.mode_coupling_matrix(l_max, cls_weights, polarizations, l2_max=5)
 
 
-def test_mode_coupling_matrix_te_te():
+def cm_direct(l1_max, l2_max, cl_weights, polarization):
 
-    l_max = 50
-    cl_weights = np.random.uniform(size=2 * l_max + 1)
+    cm = np.zeros((l1_max + 1, l2_max + 1))
 
-    cm_direct = np.zeros((l_max + 1, l_max + 1))
-
-    for l1 in range(l_max + 1):
-        for l2 in range(l_max + 1):
+    for l1 in range(l1_max + 1):
+        for l2 in range(l2_max + 1):
 
             l3_min = abs(l1 - l2)
             l3_max = l1 + l2
 
             for l3 in range(l3_min, l3_max + 1):
-                cm_direct[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0)
+                if polarization == 'TT_TT':
+                    cm[l1, l2] += cl_weights[l3] * (2 * l3 + 1) *\
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) ** 2
+                elif polarization == 'TE_TE':
+                    cm[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * \
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 0, 0, 0) * \
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0)
+                elif polarization == 'EE_EE':
+                    cm[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * (1 + (-1) ** (l1 + l2 + l3)) * \
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2 / 2
+                elif polarization == 'EE_BB':
+                    cm[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * ((-1) ** (l1 + l2 + l3 + 1) + 1) * \
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2 / 2
+                elif polarization == 'EB_EB':
+                    cm[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * \
+                                  pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2
 
-    cm_direct *= (np.arange(l_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
+    cm *= (np.arange(l2_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
 
-    cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, 'TE_TE')
-
-    assert np.allclose(cm_direct, cm)
-
-
-def test_mode_coupling_matrix_ee_ee():
-
-    l_max = 50
-    cl_weights = np.random.uniform(size=2 * l_max + 1)
-
-    cm_direct = np.zeros((l_max + 1, l_max + 1))
-
-    for l1 in range(l_max + 1):
-        for l2 in range(l_max + 1):
-
-            l3_min = abs(l1 - l2)
-            l3_max = l1 + l2
-
-            for l3 in range(l3_min, l3_max + 1):
-                cm_direct[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * (1 + (-1) ** (l1 + l2 + l3)) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2
-
-    cm_direct *= (np.arange(l_max + 1) * 2.0 + 1.0) / (8.0 * np.pi)
-
-    cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, 'EE_EE')
-
-    assert np.allclose(cm_direct, cm)
+    return cm
 
 
-def test_mode_coupling_matrix_ee_bb():
+def test_mode_coupling_matrix():
 
     l_max = 50
-    cl_weights = np.random.uniform(size=2 * l_max + 1)
+    l2_max = 60
+    polarizations = ['TT_TT', 'TE_TE', 'EE_EE', 'EE_BB', 'EB_EB']
+    cl_weights = np.random.uniform(size=(len(polarizations), l_max + l2_max + 1))
 
-    cm_direct = np.zeros((l_max + 1, l_max + 1))
+    coupling_matrices_sym = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, polarizations)
+    coupling_matrices_asym = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, polarizations, l2_max=l2_max)
 
-    for l1 in range(l_max + 1):
-        for l2 in range(l_max + 1):
-
-            l3_min = abs(l1 - l2)
-            l3_max = l1 + l2
-
-            for l3 in range(l3_min, l3_max + 1):
-                cm_direct[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * ((-1) ** (l1 + l2 + l3 + 1) + 1) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2
-
-    cm_direct *= (np.arange(l_max + 1) * 2.0 + 1.0) / (8.0 * np.pi)
-
-    cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, 'EE_BB')
-
-    assert np.allclose(cm_direct, cm)
-
-
-def test_mode_coupling_matrix_eb_eb():
-
-    l_max = 50
-    cl_weights = np.random.uniform(size=2 * l_max + 1)
-
-    cm_direct = np.zeros((l_max + 1, l_max + 1))
-
-    for l1 in range(l_max + 1):
-        for l2 in range(l_max + 1):
-
-            l3_min = abs(l1 - l2)
-            l3_max = l1 + l2
-
-            for l3 in range(l3_min, l3_max + 1):
-                cm_direct[l1, l2] += cl_weights[l3] * (2 * l3 + 1) * \
-                                     pywigxjpf.wig3jj(2 * l1, 2 * l2, 2 * l3, 2 * 2, 2 * -2, 0) ** 2
-
-    cm_direct *= (np.arange(l_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
-
-    cm = mode_coupling_matrix.mode_coupling_matrix(l_max, cl_weights, 'EB_EB')
-
-    assert np.allclose(cm_direct, cm)
+    for i, pol in enumerate(polarizations):
+        cm_sym = cm_direct(l_max, l_max, cl_weights[i], pol)
+        cm_asym = cm_direct(l_max, l2_max, cl_weights[i], pol)
+        assert np.allclose(cm_sym, coupling_matrices_sym[i])
+        assert np.allclose(cm_asym, coupling_matrices_asym[i])
 
 
 def test_mode_coupling_matrix_zeros():
 
     l_max = 10
+    l2_max = 20
     polarizatons = ['TT', 'TE', 'TB', 'EE', 'BB', 'EB']
     pol_nonzero = ['TT_TT', 'TE_TE', 'TB_TB', 'EE_EE', 'BB_BB', 'EE_BB', 'BB_EE', 'EB_EB']
     pol_zero = []
@@ -225,41 +160,68 @@ def test_mode_coupling_matrix_zeros():
             if pol not in pol_nonzero:
                 pol_zero.append(pol)
 
-    cms = mode_coupling_matrix.mode_coupling_matrix(l_max, np.ones((len(pol_zero), 2 * l_max + 1)), pol_zero)
-    assert np.all(cms == 0)
+    cms_sym = mode_coupling_matrix.mode_coupling_matrix(l_max, np.ones((len(pol_zero), 2 * l_max + 1)), pol_zero)
+    cms_asym = mode_coupling_matrix.mode_coupling_matrix(l_max,
+                                                         np.ones((len(pol_zero), l_max + l2_max + 1)), pol_zero,
+                                                         l2_max=l2_max)
+    assert np.all(cms_sym == 0)
+    assert np.all(cms_asym == 0)
 
 
 def test_mode_couling_matrix_fullsky():
 
     l_max = 100
+    l2_max = 123
     weights = np.ones(hp.nside2npix(128))
-    cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, l_max=l_max)
+    cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, l_max=l_max, l2_max=l2_max)
 
+    # symmetric case
     cm_tt_tt, cm_te_te, cm_ee_ee, cm_ee_bb, cm_eb_eb = \
         mode_coupling_matrix.mode_coupling_matrix(l_max,
                                                   [cl_weights] * 5,
                                                   ['TT_TT', 'TE_TE', 'EE_EE', 'EE_BB', 'EB_EB'])
 
-    id = np.eye(cm_tt_tt.shape[0])
-    assert np.allclose(cm_tt_tt, id)
-
-    id[0, 0] = 0
-    id[1, 1] = 0
-    assert np.allclose(cm_te_te, id)
-    assert np.allclose(cm_ee_ee, id)
+    target = np.eye(l_max + 1)
+    assert np.allclose(cm_tt_tt, target)
+    target[0, 0] = 0
+    target[1, 1] = 0
+    assert np.allclose(cm_te_te, target)
+    assert np.allclose(cm_ee_ee, target)
     assert np.allclose(cm_ee_bb, 0)
-    assert np.allclose(cm_eb_eb, id)
+    assert np.allclose(cm_eb_eb, target)
+
+    # asymmetric case
+    cm_tt_tt, cm_te_te, cm_ee_ee, cm_ee_bb, cm_eb_eb = \
+        mode_coupling_matrix.mode_coupling_matrix(l_max,
+                                                  [cl_weights] * 5,
+                                                  ['TT_TT', 'TE_TE', 'EE_EE', 'EE_BB', 'EB_EB'],
+                                                  l2_max=l2_max)
+
+    target = np.zeros((l_max + 1, l2_max + 1))
+    target[:, :l_max + 1] = np.eye(l_max + 1)
+    assert np.allclose(cm_tt_tt, target)
+    target[0, 0] = 0
+    target[1, 1] = 0
+    assert np.allclose(cm_te_te, target)
+    assert np.allclose(cm_ee_ee, target)
+    assert np.allclose(cm_ee_bb, 0)
+    assert np.allclose(cm_eb_eb, target)
 
 
 def test_weights_power_spectrum():
 
     l_max = 10
+    l2_max = 15
     nside = 32
 
     weights = np.ones(hp.nside2npix(nside))
     cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, l_max=l_max)
     assert cl_weights.size == 2 * l_max + 1
+    cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, l_max=l_max, l2_max=l2_max)
+    assert cl_weights.size == l_max + l2_max + 1
 
     weights_2 = 2 * weights
     cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, weights_2=weights_2, l_max=l_max)
     assert cl_weights.size == 2 * l_max + 1
+    cl_weights = mode_coupling_matrix.weights_power_spectrum(weights, weights_2=weights_2, l_max=l_max, l2_max=l2_max)
+    assert cl_weights.size == l_max + l2_max + 1

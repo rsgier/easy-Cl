@@ -143,13 +143,15 @@ class ModeCouplingMatrixCalc:
 
         return m_l1_l2
 
-    def __call__(self, l_max, cls_weights, polarizations):
+    def __call__(self, l_max, cls_weights, polarizations, l2_max=None):
         """
         Computes mode coupling matrices for given weight power spectra and polarizations.
         :param l_max: Maximum multipole to include in mode coupling matrix
         :param cls_weights: power spectra of the weight maps
         :param polarizations: polarizations, e.g. TT_TT, EE_EE, etc., same length as cls_weights
-        :return: mode coupling matrices, shape: (len(cls_weights), l_max + 1, l_max + 1)
+        :param l2_max: maximum multipole in the column direction, can be used to include more modes in the coupling;
+               either None, then l2_max = l_max, or l2_max >= l_max, otherwise, other cases will cause an error
+        :return: mode coupling matrices, shape: (len(cls_weights), l_max + 1, l2_max + 1)
         """
 
         # check that input makes sense
@@ -162,16 +164,21 @@ class ModeCouplingMatrixCalc:
         for pol in polarizations:
             assert pol in self.element_calculators, 'Unknown polarization {}'.format(pol)
 
+        if l2_max is None:
+            l2_max = l_max
+        if l2_max < l_max:
+            raise NotImplementedError('l2_max = {} < l_max = {}, this case is not implemented'.format(l2_max, l_max))
+
         # initialize output array
-        coupling_matrices = np.zeros((len(cls_weights), l_max + 1, l_max + 1))
+        coupling_matrices = np.zeros((len(cls_weights), l_max + 1, l2_max + 1))
 
         # multiply weight power spectra by (2 * l3 + 1)
-        cls_weights_x_2l3p1 = np.vstack([cl[:2 * l_max + 1] for cl in cls_weights])
-        cls_weights_x_2l3p1 *= 2 * np.arange(2 * l_max + 1) + 1
+        cls_weights_x_2l3p1 = np.vstack([cl[:l_max + l2_max + 1] for cl in cls_weights])
+        cls_weights_x_2l3p1 *= 2 * np.arange(l_max + l2_max + 1) + 1
 
         # only compute upper triangle
         for l1 in range(l_max + 1):
-            for l2 in range(l1, l_max + 1):
+            for l2 in range(l1, l2_max + 1):
 
                 # all symbols need to be computed for this l1, l2 combination
                 self.wig3j_s0 = None
@@ -186,23 +193,25 @@ class ModeCouplingMatrixCalc:
                 for i_pol, pol in enumerate(polarizations):
                     coupling_matrices[i_pol][l1, l2] = self.element_calculators[pol](l1, l2, cls_weights_x_2l3p1[i_pol])
 
-        # mirror matrices
+        # mirror section of the matrices where l2 <= l_max
         for cm in coupling_matrices:
-            cm += np.triu(cm, k=1).T
+            cm[:, :l_max + 1] += np.triu(cm[:, :l_max + 1], k=1).T
 
         # apply prefactor (2 * l2 + 1) / (4 * pi)
-        coupling_matrices *= (np.arange(l_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
+        coupling_matrices *= (np.arange(l2_max + 1) * 2.0 + 1.0) / (4.0 * np.pi)
 
         return coupling_matrices
 
 
-def mode_coupling_matrix(l_max, weights_cls, polarizations):
+def mode_coupling_matrix(l_max, weights_cls, polarizations, l2_max=None):
     """
     Computes the mode coupling matrix.
     :param l_max: size of the desired matrix (e.g. l_max=1500 for a (1501, 1501)-matrix)
     :param weights_cls: power spectra of the weights used to compute matrix elements (either single spectrum or
     list/array or spectra)
     :param polarizations: polarizations, either single value or list of values
+    :param l2_max: maximum multipole in the column direction, can be used to include more modes in the coupling; either
+           None, then l2_max = l_max, or l2_max >= l_max, otherwise, other cases will cause an error
     :return: mode coupling matrix / matrices
     """
 
@@ -212,7 +221,7 @@ def mode_coupling_matrix(l_max, weights_cls, polarizations):
         polarizations = [polarizations]
 
     coupling_matrix_calc = ModeCouplingMatrixCalc()
-    coupling_matrices = coupling_matrix_calc(l_max, weights_cls, polarizations)
+    coupling_matrices = coupling_matrix_calc(l_max, weights_cls, polarizations, l2_max=l2_max)
 
     if single_matrix:
         coupling_matrices = coupling_matrices[0]
@@ -220,13 +229,14 @@ def mode_coupling_matrix(l_max, weights_cls, polarizations):
     return coupling_matrices
 
 
-def weights_power_spectrum(weights_1, weights_2=None, l_max=None, correct_pixwin=True):
+def weights_power_spectrum(weights_1, weights_2=None, l_max=None, l2_max=None, correct_pixwin=True):
     """
     Computes the auto- or cross power spectrum of one or two weights map(s).
     :param weights_1: weight map
     :param weights_2: second weight map, if None, the result is an auto-spectrum, else it is a cross-spectrum
-    :param l_max: maximum l to consider for the mode coupling matrix, the necessary maximum l for the weight power
-                  spectrum is then twice this value
+    :param l_max: maximum l to include when computing the mode coupling matrix, the necessary maximum l for the weight
+                  power spectrum is then twice this value (or more if l2_max is not None)
+    :param l2_max: maximum l2 to include in the mode coupling matrix
     :param correct_pixwin: whether to correct for the pixel window function, default: True
     :return: peusdo angular power spectrum
     """
@@ -235,7 +245,10 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None, correct_pixwin
         weights_2 = weights_1
 
     if l_max is not None:
-        l_max *= 2
+        if l2_max is not None:
+            l_max = l_max + l2_max
+        else:
+            l_max *= 2
 
     cl = run_anafast.run_anafast(weights_1, 's0', map_2=weights_2, map_2_type='s0', lmax=l_max)['cl_TT']
 
