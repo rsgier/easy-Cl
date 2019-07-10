@@ -2,9 +2,34 @@
 
 import numpy as np
 import healpy as hp
-from ECl.run_anafast import run_anafast
+from ECl.run_anafast import apply_weights, run_anafast
 
 NSIDE = 16
+
+
+def test_apply_weights():
+
+    weights = np.ones(hp.nside2npix(NSIDE))
+    weights = np.random.uniform(low=0, high=1, size=weights.size)
+    weights[np.random.choice(weights.size, size=weights.size // 2, replace=False)] = 0
+
+    # s0
+    map1 = np.ones(hp.nside2npix(NSIDE))
+    map1[np.random.choice(map1.size, size=map1.size // 2, replace=False)] = hp.UNSEEN
+    map1_w = apply_weights(map1, weights, 's0')
+    select_seen = (map1 != hp.UNSEEN) & (weights > 0)
+    assert np.array_equal(map1_w[select_seen], map1[select_seen] * weights[select_seen])
+    assert np.all(map1_w[~select_seen] == hp.UNSEEN)
+
+    # s2
+    map1 = np.ones((2, hp.nside2npix(NSIDE)))
+    map1[:, np.random.choice(map1.shape[1], size=map1.shape[1] // 2, replace=False)] = hp.UNSEEN
+    map1_w = apply_weights(map1, weights, 's2')
+    select_seen = (map1[0] != hp.UNSEEN) & (weights > 0)
+    assert np.array_equal(map1_w[0][select_seen], map1[0][select_seen] * weights[select_seen])
+    assert np.array_equal(map1_w[1][select_seen], map1[1][select_seen] * weights[select_seen])
+    assert np.all(map1_w[0][~select_seen] == hp.UNSEEN)
+    assert np.all(map1_w[1][~select_seen] == hp.UNSEEN)
 
 
 def test_compute_cls_s0_s0():

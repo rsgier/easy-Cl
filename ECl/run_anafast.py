@@ -6,6 +6,27 @@ import healpy as hp
 from ECl import utils
 
 
+def apply_weights(maps, weights, map_type):
+    
+    select_seen = weights > 0
+    select_unseen = ~select_seen
+    
+    if map_type == 's0':
+        select_unseen |= maps == hp.UNSEEN
+        maps_w = (maps * weights).astype(np.float)
+        maps_w[select_unseen] = hp.UNSEEN
+    else:
+        select_unseen |= maps[0] == hp.UNSEEN
+        select_unseen |= maps[1] == hp.UNSEEN
+        maps_0_w = (maps[0] * weights).astype(np.float)
+        maps_1_w = (maps[1] * weights).astype(np.float)
+        maps_0_w[select_unseen] = hp.UNSEEN
+        maps_1_w[select_unseen] = hp.UNSEEN
+        maps_w = [maps_0_w, maps_1_w]
+        
+    return maps_w
+
+
 def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, weights_2=None, signflip_e1=False,
                 compute_be=False, lmax=None):
     """
@@ -47,17 +68,8 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
         utils.flip_s2_maps(map_1, map_1_type, map_2, map_2_type)
 
     # Apply weights
-    if map_1_type == 's0':
-        map1_w = map_1 * weights_1
-    else:
-        map1_0_w = map_1[0] * weights_1
-        map1_1_w = map_1[1] * weights_1
-
-    if map_2_type == 's0':
-        map2_w = map_2 * weights_2
-    else:
-        map2_0_w = map_2[0] * weights_2
-        map2_1_w = map_2[1] * weights_2
+    map1_w = apply_weights(map_1, weights_1, map_1_type)
+    map2_w = apply_weights(map_2, weights_2, map_2_type)
 
     # Compute power spectrum
     if map_1_type == 's0' and map_2_type == 's0':
@@ -69,10 +81,10 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
                       input_maps_type=['s0', 's0'])
 
     elif map_1_type == 'EB' and map_2_type == 'EB':
-        cl_ee = np.array(hp.sphtfunc.anafast(map1_0_w, map2_0_w, lmax=lmax))
-        cl_eb = np.array(hp.sphtfunc.anafast(map1_0_w, map2_1_w, lmax=lmax))
-        cl_be = np.array(hp.sphtfunc.anafast(map1_1_w, map2_0_w, lmax=lmax))
-        cl_bb = np.array(hp.sphtfunc.anafast(map1_1_w, map2_1_w, lmax=lmax))
+        cl_ee = np.array(hp.sphtfunc.anafast(map1_w[0], map2_w[0], lmax=lmax))
+        cl_eb = np.array(hp.sphtfunc.anafast(map1_w[0], map2_w[1], lmax=lmax))
+        cl_be = np.array(hp.sphtfunc.anafast(map1_w[1], map2_w[0], lmax=lmax))
+        cl_bb = np.array(hp.sphtfunc.anafast(map1_w[1], map2_w[1], lmax=lmax))
         l = np.arange(len(cl_ee))
         cl_out = dict(l=l,
                       cl_EE=cl_ee,
@@ -83,11 +95,11 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
                       input_maps_type=['EB', 'EB'])
 
     elif map_1_type == 's2' and map_2_type == 's2':
-        dummie_map = np.zeros_like(map1_0_w)
+        dummie_map = np.zeros_like(map1_w[0])
 
         cl_t1t2, cl_e1e2, cl_b1b2, cl_t1e2, cl_e1b2, cl_t1b2 = np.array(
-            hp.sphtfunc.anafast((dummie_map, map1_0_w, map1_1_w),
-                                (dummie_map, map2_0_w, map2_1_w),
+            hp.sphtfunc.anafast((dummie_map, map1_w[0], map1_w[1]),
+                                (dummie_map, map2_w[0], map2_w[1]),
                                 lmax=lmax))
 
         l = np.arange(len(cl_t1t2))
@@ -100,8 +112,8 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
 
         if compute_be:
             _, _, _, _, cl_e2b1, _ = np.array(
-                hp.sphtfunc.anafast((dummie_map, map2_0_w, map2_1_w),
-                                    (dummie_map, map1_0_w, map1_1_w),
+                hp.sphtfunc.anafast((dummie_map, map2_w[0], map2_w[1]),
+                                    (dummie_map, map1_w[0], map1_w[1]),
                                     lmax=lmax))
             cl_out['cl_BE'] = cl_e2b1
             cl_out['cl_type'].append('cl_BE')
@@ -111,11 +123,11 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
 
         if map_1_type == 's2':
             dummie_map = np.zeros_like(map2_w)
-            q_map, u_map, t_map = map1_0_w, map1_1_w, map2_w
+            q_map, u_map, t_map = map1_w[0], map1_w[1], map2_w
             type_var = ['s2', 's0']
         else:
             dummie_map = np.zeros_like(map1_w)
-            q_map, u_map, t_map = map2_0_w, map2_1_w, map1_w
+            q_map, u_map, t_map = map2_w[0], map2_w[1], map1_w
             type_var = ['s0', 's2']
 
         _, _, _, cl_te, _, cl_tb = np.array(hp.sphtfunc.anafast((t_map, dummie_map, dummie_map),
@@ -136,11 +148,11 @@ def run_anafast(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None, 
             map_1_type == 's0' and map_2_type == 'EB':
 
         if map_1_type == 'EB':
-            t_map, e_map, b_map = map2_w, map1_0_w, map1_1_w
+            t_map, e_map, b_map = map2_w, map1_w[0], map1_w[1]
             type_var = ['EB', 's0']
 
         else:
-            t_map, e_map, b_map = map1_w, map2_0_w, map2_1_w
+            t_map, e_map, b_map = map1_w, map2_w[0], map2_w[1]
             type_var = ['s0', 'EB']
 
         cl_te = hp.sphtfunc.anafast(t_map, e_map, lmax=lmax)
