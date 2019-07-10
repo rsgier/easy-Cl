@@ -250,6 +250,11 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None, l2_max=None, c
         else:
             l_max *= 2
 
+    weights_1_unseen = weights_1.copy()
+    weights_1_unseen[weights_1_unseen == 0] = hp.UNSEEN
+    weights_2_unseen = weights_2.copy()
+    weights_2_unseen[weights_2_unseen == 0] = hp.UNSEEN
+
     cl = run_anafast.run_anafast(weights_1, 's0', map_2=weights_2, map_2_type='s0', lmax=l_max)['cl_TT']
 
     if correct_pixwin:
