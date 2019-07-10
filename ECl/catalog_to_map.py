@@ -5,7 +5,7 @@ import healpy as hp
 import numba as nb
 
 
-def catalog_to_map(col1, ra, dec, spin, nside, col2=None):
+def catalog_to_map(col1, ra, dec, spin, nside, col2=None, normalize_counts=True):
     """
     Transforms positional catalog data into healpix maps.
     :param col1: values of the quantity to be put onto the map
@@ -14,7 +14,8 @@ def catalog_to_map(col1, ra, dec, spin, nside, col2=None):
     :param spin: eighter s0 (scalar), s1 (vector) or s2
     :param nside: healpix nside parameter (map resolution)
     :param col2: second column with values to be put onto the map, needed for s1 and s2
-    :return: tuple of maps (1 for s0, 2 for s1 and s2) and inverse number counts weights
+    :param normalize_counts: whether to normalize the object counts by their mean and the fractional sky coverage
+    :return: tuple of maps (1 for s0, 2 for s1 and s2) and the (normalized) number counts
     """
 
     # check input
@@ -34,8 +35,7 @@ def catalog_to_map(col1, ra, dec, spin, nside, col2=None):
 
     # create map and mask
     if spin == 's0':
-        m, counts = s0_map(col1, pix_indices, nside)
-        maps = (m,)
+        maps, counts = s0_map(col1, pix_indices, nside)
 
     elif spin == 's1':
         m1, m2, counts = s1_map(col1, col2, pix_indices, nside)
@@ -44,6 +44,9 @@ def catalog_to_map(col1, ra, dec, spin, nside, col2=None):
     else:
         m1, m2, counts = s2_map(col1, col2, pix_indices, nside)
         maps = (m1, m2)
+
+    if normalize_counts:
+        normalize_count_map(counts)
 
     return maps, counts
 
@@ -165,3 +168,13 @@ def _fill_map_numba(q, pix_indices, n_pix):
     for i in range(len(pix_indices)):
         map_out[pix_indices[i]] += q[i]
     return map_out
+
+
+def normalize_count_map(counts):
+    """
+    Normalizes count map in-place by dividing by the average count and the square root of the fractional sky coverage.
+    As a result, the weight power spectrum will be of the same order of magnitude as the unweighted one.
+    :param counts: count map
+    """
+    counts /= np.mean(counts[counts > 0])                      # 1) center pixel values around 1
+    counts /= np.sqrt(np.count_nonzero(counts) / counts.size)  # 2) divide sqrt(f_sky)

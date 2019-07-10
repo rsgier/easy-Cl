@@ -39,11 +39,12 @@ def test_s0():
     with pytest.raises(ValueError):
         catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)  # since spin-0 can only have one component
 
-    maps, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside)
-    m = maps[0]
-
+    m, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, normalize_counts=False)
     assert np.all(m == q_val)
     assert np.all(counts == n_per_pixel)
+
+    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, normalize_counts=True)
+    assert np.array_equal(counts == 0, counts_norm == 0)
 
 
 def test_s1():
@@ -60,12 +61,14 @@ def test_s1():
     with pytest.raises(ValueError):
         catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside)  # since spin-1 must have 2 components
 
-    maps, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, col2=q)
-    m1, m2 = maps
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, col2=q, normalize_counts=False)
 
     # we test if the s1 --> s2 transformation preserves the length of the vector
     assert np.allclose(m1**2 + m2**2, 2 * q_val**2)
     assert np.all(counts == n_per_pixel)
+
+    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, col2=q, normalize_counts=True)
+    assert np.array_equal(counts == 0, counts_norm == 0)
 
 
 def test_s2():
@@ -86,8 +89,7 @@ def test_s2():
     with pytest.raises(ValueError):
         catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside)  # since spin-2 must have 2 components
 
-    maps, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, col2=q)
-    m1, m2 = maps
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, col2=q, normalize_counts=False)
 
     assert np.all(m1[1:-1] == q_val)
     assert np.all(m1[[0, -1]] == hp.UNSEEN)
@@ -95,3 +97,6 @@ def test_s2():
     assert np.all(m2[[0, -1]] == hp.UNSEEN)
     assert np.all(counts[1:-1] == n_per_pixel)
     assert np.all(counts[[0, -1]] == 0)
+
+    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, col2=q, normalize_counts=True)
+    assert np.array_equal(counts == 0, counts_norm == 0)
