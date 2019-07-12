@@ -6,9 +6,9 @@ Tests for running PolSpice.
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
+from unittest.mock import patch
 import numpy as np
 import healpy as hp
-from mock import patch
 import pytest
 
 from ECl import run_polspice

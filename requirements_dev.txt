@@ -10,7 +10,6 @@ sphinx
 coverage
 sphinx-pynpoint-theme
 tox
-mock
 
 numpy
 healpy
