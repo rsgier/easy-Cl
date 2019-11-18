@@ -40,6 +40,34 @@ def get_cl_input(map_1, map_1_type, map_2=None, map_2_type=None, weights_1=None,
     if map_2_type not in ['s0', 's2', 'EB']:
         raise ValueError('Unsupported format for map_2: {}'.format(map_2_type))
 
+    # Check that for s2 and EB, two maps are provided
+    for i, (maps, map_type) in enumerate([(map_1, map_1_type), (map_2, map_2_type)]):
+
+        raise_error = False
+        error_msg = None
+
+        if map_type == 's0':
+            try:
+                maps[0][0]
+                maps[1][0]
+                raise_error = True
+                error_msg = 'map_{}_type is {}, but map_{} seems to have (at least) two components'.\
+                    format(i + 1, map_type, i + 1)
+            except (IndexError, TypeError):
+                pass
+
+        else:
+            try:
+                maps[0][0]
+                maps[1][0]
+            except (IndexError, TypeError):
+                raise_error = True
+                error_msg = 'map_{}_type is {}, but map_{} does not seem to have two components'.\
+                    format(i + 1, map_type, i + 1)
+
+        if raise_error:
+            raise TypeError(error_msg)
+
     # Set weights to 1 if not provided
     if weights_1 is None:
         if map_1_type == 's0':

@@ -110,6 +110,19 @@ def test_get_cl_input():
     with pytest.raises(ValueError):
         utils.get_cl_input(map_1_1, 's0', map_2=map_2_1, map_2_type='wtf')
 
+    with pytest.raises(TypeError):
+        utils.get_cl_input((map_1_1, map_1_2), 's0')
+    with pytest.raises(TypeError):
+        utils.get_cl_input(map_1_1, 's2')
+    with pytest.raises(TypeError):
+        utils.get_cl_input(map_1_1, 'EB')
+    with pytest.raises(TypeError):
+        utils.get_cl_input(map_1_1, 's0', map_2=(map_2_1, map_2_2), map_2_type='s0')
+    with pytest.raises(TypeError):
+        utils.get_cl_input(map_1_1, 's0', map_2=map_2_1, map_2_type='s2')
+    with pytest.raises(TypeError):
+        utils.get_cl_input(map_1_1, 's0', map_2=map_2_1, map_2_type='EB')
+
 
 def _get_maps(s1, s2, nside):
 

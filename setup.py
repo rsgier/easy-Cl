@@ -49,7 +49,7 @@ PACKAGE_PATH = os.path.abspath(os.path.join(__file__, os.pardir))
 
 setup(
     name='ECl',
-    version='0.3.0',
+    version='0.3.1',
     description='this is a package for dealing with angular power spectra',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
     author='Raphael Sgier',
