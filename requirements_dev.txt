@@ -11,8 +11,4 @@ coverage
 sphinx-pynpoint-theme
 tox
 
-numpy
-healpy
-numba
-pyshtools
 pywigxjpf

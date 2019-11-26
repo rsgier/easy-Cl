@@ -43,7 +43,7 @@ publish_docs:
     tags:
         - python
     script:
-        - publish_docs docs/_build hope
+        - publish_docs docs/_build ECl
         - create_index_html
     when: manual
     stage: publish_docs
