@@ -22,11 +22,13 @@ def catalog_to_map(col1, ra, dec, spin, nside, weights=None, col2=None, normaliz
     # check input
     if spin == 's0':
         if col2 is not None:
-            raise ValueError('Provided spin {} but two input columns'.format(spin))
+            raise ValueError(
+                'Provided spin {} but two input columns'.format(spin))
 
     elif spin == 's1' or spin == 's2':
         if col2 is None:
-            raise ValueError('Provided spin {} but only one input column'.format(spin))
+            raise ValueError(
+                'Provided spin {} but only one input column'.format(spin))
 
     else:
         raise ValueError('Unknown spin type {}'.format(spin))
@@ -74,8 +76,10 @@ def s0_map(q, pix_indices, nside, weights=None):
     :param nside: nside of the Healpix map
     :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
     """
-    counts, mask, weighted_map_counts = get_counts_and_mask(pix_indices, nside, weights)
-    m = _average_and_mask(q, pix_indices, nside, weighted_map_counts, mask, weights)
+    counts, mask, weighted_map_counts = get_counts_and_mask(
+        pix_indices, nside, weights)
+    m = _average_and_mask(q, pix_indices, nside,
+                          weighted_map_counts, mask, weights)
     return m, counts
 
 
@@ -109,9 +113,12 @@ def s2_map(q1, q2, pix_indices, nside, weights=None):
     :param nside: nside of the Healpix map
     :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
     """
-    counts, mask, weighted_map_counts = get_counts_and_mask(pix_indices, nside, weights)
-    m1 = _average_and_mask(q1, pix_indices, nside, weighted_map_counts, mask, weights)
-    m2 = _average_and_mask(q2, pix_indices, nside, weighted_map_counts, mask, weights)
+    counts, mask, weighted_map_counts = get_counts_and_mask(
+        pix_indices, nside, weights)
+    m1 = _average_and_mask(q1, pix_indices, nside,
+                           weighted_map_counts, mask, weights)
+    m2 = _average_and_mask(q2, pix_indices, nside,
+                           weighted_map_counts, mask, weights)
     return m1, m2, counts
 
 
@@ -120,10 +127,13 @@ def get_counts_and_mask(pix_indices, nside, weights=None):
     Construct a Healpix map containing object counts
     :param pix_indices: Healpix pixel indices
     :param nside: nside of the Healpix map
+    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
     :return map_counts: Healpix map with counts
     :return mask: mask of non-empty pixels
+    :return weighted_map_counts: Healpix weight map
     """
-    weighted_map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside, weights)
+    weighted_map_counts = _fill_map(np.ones_like(
+        pix_indices), pix_indices, nside, weights)
     if weights is not None:
         map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside)
     else:
@@ -144,10 +154,7 @@ def _average_and_mask(q, pix_indices, nside, map_counts, mask, weights=None):
     :return: map containing average values
     """
     map_filled = _fill_map(q, pix_indices, nside, weights)
-    print(map_filled)
     map_filled[mask] /= map_counts[mask]
-    print(map_counts)
-    print(map_filled)
     map_filled[~mask] = hp.UNSEEN
     return map_filled
 
@@ -167,6 +174,7 @@ def _fill_map(q, pix_indices, nside, weights=None):
         ws = weights
     return _fill_map_numba_weighted(q, pix_indices, hp.nside2npix(nside), ws)
 
+
 @nb.jit(nopython=True)
 def _fill_map_numba_weighted(q, pix_indices, n_pix, weights):
     """
@@ -174,7 +182,7 @@ def _fill_map_numba_weighted(q, pix_indices, n_pix, weights):
     """
     map_out = np.zeros(n_pix)
     for i in range(len(pix_indices)):
-        map_out[pix_indices[i]] += q[i]*weights[i]
+        map_out[pix_indices[i]] += q[i] * weights[i]
     return map_out
 
 
@@ -184,5 +192,7 @@ def normalize_count_map(counts):
     As a result, the weight power spectrum will be of the same order of magnitude as the unweighted one.
     :param counts: count map
     """
-    counts /= np.mean(counts[counts > 0])                      # 1) center pixel values around 1
-    counts /= np.sqrt(np.count_nonzero(counts) / counts.size)  # 2) divide sqrt(f_sky)
+    counts /= np.mean(counts[counts > 0]
+                      )                      # 1) center pixel values around 1
+    # 2) divide sqrt(f_sky)
+    counts /= np.sqrt(np.count_nonzero(counts) / counts.size)
