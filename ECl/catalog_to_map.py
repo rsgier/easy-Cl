@@ -74,8 +74,8 @@ def s0_map(q, pix_indices, nside, weights=None):
     :param nside: nside of the Healpix map
     :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
     """
-    counts, mask = get_counts_and_mask(pix_indices, nside)
-    m = _average_and_mask(q, pix_indices, nside, counts, mask, weights)
+    counts, mask, weighted_map_counts = get_counts_and_mask(pix_indices, nside, weights)
+    m = _average_and_mask(q, pix_indices, nside, weighted_map_counts, mask, weights)
     return m, counts
 
 
@@ -109,13 +109,13 @@ def s2_map(q1, q2, pix_indices, nside, weights=None):
     :param nside: nside of the Healpix map
     :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
     """
-    counts, mask = get_counts_and_mask(pix_indices, nside)
-    m1 = _average_and_mask(q1, pix_indices, nside, counts, mask, weights)
-    m2 = _average_and_mask(q2, pix_indices, nside, counts, mask, weights)
+    counts, mask, weighted_map_counts = get_counts_and_mask(pix_indices, nside, weights)
+    m1 = _average_and_mask(q1, pix_indices, nside, weighted_map_counts, mask, weights)
+    m2 = _average_and_mask(q2, pix_indices, nside, weighted_map_counts, mask, weights)
     return m1, m2, counts
 
 
-def get_counts_and_mask(pix_indices, nside):
+def get_counts_and_mask(pix_indices, nside, weights=None):
     """
     Construct a Healpix map containing object counts
     :param pix_indices: Healpix pixel indices
@@ -123,9 +123,13 @@ def get_counts_and_mask(pix_indices, nside):
     :return map_counts: Healpix map with counts
     :return mask: mask of non-empty pixels
     """
-    map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside)
+    weighted_map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside, weights)
+    if weights is not None:
+        map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside)
+    else:
+        map_counts = weighted_map_counts
     mask = map_counts > 0
-    return map_counts, mask
+    return map_counts, mask, weighted_map_counts
 
 
 def _average_and_mask(q, pix_indices, nside, map_counts, mask, weights=None):
@@ -140,7 +144,10 @@ def _average_and_mask(q, pix_indices, nside, map_counts, mask, weights=None):
     :return: map containing average values
     """
     map_filled = _fill_map(q, pix_indices, nside, weights)
+    print(map_filled)
     map_filled[mask] /= map_counts[mask]
+    print(map_counts)
+    print(map_filled)
     map_filled[~mask] = hp.UNSEEN
     return map_filled
 
@@ -155,32 +162,19 @@ def _fill_map(q, pix_indices, nside, weights=None):
     :return: Healpix map containing sums of the values falling into the pixels
     """
     if weights is None:
-        return _fill_map_numba(q, pix_indices, hp.nside2npix(nside))
+        ws = np.ones_like(pix_indices)
     else:
-        return _fill_map_numba_weighted(q, pix_indices, weights, hp.nside2npix(nside))
-
+        ws = weights
+    return _fill_map_numba_weighted(q, pix_indices, hp.nside2npix(nside), ws)
 
 @nb.jit(nopython=True)
-def _fill_map_numba_weighted(q, pix_indices, weights, n_pix):
+def _fill_map_numba_weighted(q, pix_indices, n_pix, weights):
     """
     Numba-compiled version of _fill_map. Includes weights for each object.
     """
     map_out = np.zeros(n_pix)
-    map_weights = np.zeros(n_pix)
     for i in range(len(pix_indices)):
         map_out[pix_indices[i]] += q[i]*weights[i]
-        map_weights[pix_indices[i]] += weights[i]
-    map_out /= map_weights
-    return map_out
-
-@nb.jit(nopython=True)
-def _fill_map_numba(q, pix_indices, n_pix):
-    """
-    Numba-compiled version of _fill_map
-    """
-    map_out = np.zeros(n_pix)
-    for i in range(len(pix_indices)):
-        map_out[pix_indices[i]] += q[i]
     return map_out
 
 

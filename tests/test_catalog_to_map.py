@@ -27,10 +27,10 @@ def create_test_data(nside, q_val, n_per_pixel):
 
 def create_test_weights(nside, n_per_pixel):
     n_pix = hp.nside2npix(nside)
-    w1 = np.full(n_per_pixel/2, 1.)
-    w2 = np.full(n_per_pixel/2, 0.5)
+    w1 = np.full(n_per_pixel//2, 1.)
+    w2 = np.full(n_per_pixel//2, 0.5)
     w = np.append(w1, w2)
-    weights = np.repeat(w, n_pix)
+    weights = np.tile(w, n_pix)
     return weights
 
 
@@ -71,9 +71,12 @@ def test_s0_weighted():
         catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)  # since spin-0 can only have one component
 
     weights = create_test_weights(nside, n_per_pixel)
-
+    print(q)
+    print(ra)
+    print(dec)
+    print(weights)
     m, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, weights=weights, normalize_counts=False)
-    assert np.all(m == q_val*0.75)
+    assert np.all(m == q_val)
     assert np.all(counts == n_per_pixel)
 
     _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, weights=weights, normalize_counts=True)
