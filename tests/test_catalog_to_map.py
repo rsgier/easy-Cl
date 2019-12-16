@@ -1,4 +1,5 @@
-# Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
+# Copyright (C) 2018 ETH Zurich,
+# Institute for Particle Physics and Astrophysics
 
 """
 Tests for the conversion of catalog data to Healpix maps.
@@ -28,7 +29,7 @@ def create_test_data(nside, q_val, n_per_pixel):
 def create_test_weights(nside, n_per_pixel):
     n_pix = hp.nside2npix(nside)
 
-    ws = np.asarray([1./n for n in range(1, n_per_pixel + 1)])
+    ws = np.asarray([1. / n for n in range(1, n_per_pixel + 1)])
     weights = np.tile(ws, n_pix)
     return weights
 
@@ -45,13 +46,18 @@ def test_s0():
     q, ra, dec = create_test_data(nside, q_val, n_per_pixel)
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)  # since spin-0 can only have one component
+        catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)
+        # since spin-0 can only have one component
 
-    m, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, normalize_counts=False)
+    m, counts = catalog_to_map.catalog_to_map(q, ra, dec,
+                                              's0', nside,
+                                              normalize_counts=False)
     assert np.all(m == q_val)
     assert np.all(counts == n_per_pixel)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, normalize_counts=True)
+    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's0',
+                                                   nside,
+                                                   normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)
 
 
@@ -67,15 +73,24 @@ def test_s0_weighted():
     q, ra, dec = create_test_data(nside, q_val, n_per_pixel)
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)  # since spin-0 can only have one component
+        catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, col2=q)
+        # since spin-0 can only have one component
 
     weights = create_test_weights(nside, n_per_pixel)
 
-    m, counts = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, weights=weights, normalize_counts=False)
+    m, counts = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's0', nside, weights=weights, normalize_counts=False)
     assert np.all(m == q_val)
     assert np.all(counts == n_per_pixel)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's0', nside, weights=weights, normalize_counts=True)
+    m, counts = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's0', nside, weights=weights, use_weighted_counts=True,
+        normalize_counts=False)
+    assert np.all(m == q_val)
+    assert np.all(counts == np.sum(weights[:n_per_pixel]))
+
+    _, counts_norm = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's0', nside, weights=weights, normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)
 
 
@@ -91,15 +106,19 @@ def test_s1():
     q, ra, dec = create_test_data(nside, q_val, n_per_pixel)
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside)  # since spin-1 must have 2 components
+        # since spin-1 must have 2 components
+        catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside)
 
-    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, col2=q, normalize_counts=False)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's1', nside, col2=q, normalize_counts=False)
 
-    # we test if the s1 --> s2 transformation preserves the length of the vector
+    # we test if the s1 --> s2
+    # transformation preserves the length of the vector
     assert np.allclose(m1**2 + m2**2, 2 * q_val**2)
     assert np.all(counts == n_per_pixel)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, col2=q, normalize_counts=True)
+    _, counts_norm = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's1', nside, col2=q, normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)
 
 
@@ -115,16 +134,33 @@ def test_s1_weighted():
     q, ra, dec = create_test_data(nside, q_val, n_per_pixel)
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside)  # since spin-1 must have 2 components
+        # since spin-1 must have 2 components
+        catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside)
 
     weights = create_test_weights(nside, n_per_pixel)
 
-    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, weights=weights, col2=q, normalize_counts=False)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec,
+                                                     's1', nside,
+                                                     weights=weights, col2=q,
+                                                     normalize_counts=False)
 
-    # we test if the s1 --> s2 transformation preserves the length of the vector
+    # we test if the s1 --> s2 transformation
+    # preserves the length of the vector
     assert np.all(counts == n_per_pixel)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside, weights=weights, col2=q, normalize_counts=True)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's1', nside,
+                                                     weights=weights,
+                                                     use_weighted_counts=True,
+                                                     col2=q,
+                                                     normalize_counts=False)
+
+    # we test if the s1 --> s2 transformation
+    # preserves the length of the vector
+    assert np.all(counts == np.sum(weights[:n_per_pixel]))
+
+    _, counts_norm = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's1', nside, weights=weights, col2=q,
+        normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)
 
 
@@ -144,9 +180,11 @@ def test_s2():
     dec = dec[n_per_pixel:-n_per_pixel]
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside)  # since spin-2 must have 2 components
+        # since spin-2 must have 2 components
+        catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside)
 
-    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, col2=q, normalize_counts=False)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's2', nside, col2=q, normalize_counts=False)
 
     assert np.all(m1[1:-1] == q_val)
     assert np.all(m1[[0, -1]] == hp.UNSEEN)
@@ -155,7 +193,8 @@ def test_s2():
     assert np.all(counts[1:-1] == n_per_pixel)
     assert np.all(counts[[0, -1]] == 0)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, col2=q, normalize_counts=True)
+    _, counts_norm = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's2', nside, col2=q, normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)
 
 
@@ -177,14 +216,31 @@ def test_s2_weighted():
     weights = create_test_weights(nside, n_per_pixel)
 
     with pytest.raises(ValueError):
-        catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, weights=weights)  # since spin-2 must have 2 components
+        # since spin-2 must have 2 components
+        catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, weights=weights)
 
-    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, weights=weights, col2=q, normalize_counts=False)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec,
+                                                     's2', nside,
+                                                     weights=weights, col2=q,
+                                                     normalize_counts=False)
 
     assert np.all(m1[[0, -1]] == hp.UNSEEN)
     assert np.all(m2[[0, -1]] == hp.UNSEEN)
     assert np.all(counts[1:-1] == n_per_pixel)
     assert np.all(counts[[0, -1]] == 0)
 
-    _, counts_norm = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside, weights=weights, col2=q, normalize_counts=True)
+    (m1, m2), counts = catalog_to_map.catalog_to_map(q, ra, dec, 's2', nside,
+                                                     weights=weights,
+                                                     use_weighted_counts=True,
+                                                     col2=q,
+                                                     normalize_counts=False)
+
+    assert np.all(m1[[0, -1]] == hp.UNSEEN)
+    assert np.all(m2[[0, -1]] == hp.UNSEEN)
+    assert np.all(counts[1:-1] == np.sum(weights[:n_per_pixel]))
+    assert np.all(counts[[0, -1]] == 0)
+
+    _, counts_norm = catalog_to_map.catalog_to_map(
+        q, ra, dec, 's2', nside, weights=weights, col2=q,
+        normalize_counts=True)
     assert np.array_equal(counts == 0, counts_norm == 0)

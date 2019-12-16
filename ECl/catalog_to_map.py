@@ -1,11 +1,13 @@
-# Copyright (C) 2018 ETH Zurich, Institute for Particle Physics and Astrophysics
+# Copyright (C) 2018 ETH Zurich,
+# Institute for Particle Physics and Astrophysics
 
 import numpy as np
 import healpy as hp
 import numba as nb
 
 
-def catalog_to_map(col1, ra, dec, spin, nside, weights=None, col2=None, normalize_counts=True):
+def catalog_to_map(col1, ra, dec, spin, nside, weights=None, col2=None,
+                   normalize_counts=True, use_weighted_counts=False):
     """
     Transforms positional catalog data into healpix maps.
     :param col1: values of the quantity to be put onto the map
@@ -13,10 +15,16 @@ def catalog_to_map(col1, ra, dec, spin, nside, weights=None, col2=None, normaliz
     :param dec: declination values in degrees
     :param spin: eighter s0 (scalar), s1 (vector) or s2
     :param nside: healpix nside parameter (map resolution)
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
-    :param col2: second column with values to be put onto the map, needed for s1 and s2
-    :param normalize_counts: whether to normalize the object counts by their mean and the fractional sky coverage
-    :return: tuple of maps (1 for s0, 2 for s1 and s2) and the (normalized) number counts
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
+    :param col2: second column with values to be put onto the map,
+                 needed for s1 and s2
+    :param normalize_counts: whether to normalize the object counts by their
+                             mean and the fractional sky coverage
+    :param use_weighted_counts: If True the pixel counts are weighted by
+                            the weights of the objects in the pixel
+    :return: tuple of maps (1 for s0, 2 for s1 and s2)
+             and the (normalized) number counts
     """
 
     # check input
@@ -38,14 +46,17 @@ def catalog_to_map(col1, ra, dec, spin, nside, weights=None, col2=None, normaliz
 
     # create map and mask
     if spin == 's0':
-        maps, counts = s0_map(col1, pix_indices, nside, weights)
+        maps, counts = s0_map(col1, pix_indices, nside, weights,
+                              use_weighted_counts=use_weighted_counts)
 
     elif spin == 's1':
-        m1, m2, counts = s1_map(col1, col2, pix_indices, nside, weights)
+        m1, m2, counts = s1_map(col1, col2, pix_indices, nside, weights,
+                                use_weighted_counts=use_weighted_counts)
         maps = (m1, m2)
 
     else:
-        m1, m2, counts = s2_map(col1, col2, pix_indices, nside, weights)
+        m1, m2, counts = s2_map(col1, col2, pix_indices, nside, weights,
+                                use_weighted_counts=use_weighted_counts)
         maps = (m1, m2)
 
     if normalize_counts:
@@ -68,30 +79,41 @@ def ra_dec_to_healpix_ind(ra, dec, nside):
     return pix_indices
 
 
-def s0_map(q, pix_indices, nside, weights=None):
+def s0_map(q, pix_indices, nside, weights=None, use_weighted_counts=False):
     """
     Put a spin-0 quantity onto a Healpix map.
     :param q: values to put onto map
     :param pix_indices: Healpix pixel indices associated with the values
     :param nside: nside of the Healpix map
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
+    :param use_weighted_counts: If True the pixel counts are weighted by
+                            the weights of the objects in the pixel
     """
-    counts, mask, weighted_map_counts = get_counts_and_mask(
+    counts, mask, weighted_counts = get_counts_and_mask(
         pix_indices, nside, weights)
     m = _average_and_mask(q, pix_indices, nside,
-                          weighted_map_counts, mask, weights)
-    return m, counts
+                          weighted_counts, mask, weights)
+    if use_weighted_counts is True:
+        return m, weighted_counts
+    else:
+        return m, counts
 
 
-def s1_map(q1, q2, pix_indices, nside, weights=None):
+def s1_map(q1, q2, pix_indices, nside,
+           weights=None, use_weighted_counts=False):
     """
-    Put a spin-1 quantity onto a Healpix map. This is done by first transforming to a spin-2 quantity (multiplication
+    Put a spin-1 quantity onto a Healpix map. This is done by first
+    transforming to a spin-2 quantity (multiplication
     of the phase by 2) and by then mapping the spin-2 quantity.
     :param q1: first component of the quantity to put onto map
     :param q2: second component of the quantity to put onto map
     :param pix_indices: Healpix pixel indices associated with the values
     :param nside: nside of the Healpix map
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
+    :param use_weighted_counts: If True the pixel counts are weighted by
+                            the weights of the objects in the pixel
     """
 
     # Transform to spin-2 field by multiplying the phase by 2
@@ -101,25 +123,34 @@ def s1_map(q1, q2, pix_indices, nside, weights=None):
     q1_s2 = q_s2.real
     q2_s2 = q_s2.imag
 
-    return s2_map(q1_s2, q2_s2, pix_indices, nside, weights)
+    return s2_map(q1_s2, q2_s2, pix_indices, nside,
+                  weights, use_weighted_counts)
 
 
-def s2_map(q1, q2, pix_indices, nside, weights=None):
+def s2_map(q1, q2, pix_indices, nside,
+           weights=None, use_weighted_counts=False):
     """
     Put a spin-2 quantity onto a Healpix map.
     :param q1: first component of the quantity to put onto map
     :param q2: second component of the quantity to put onto map
     :param pix_indices: Healpix pixel indices associated with the values
     :param nside: nside of the Healpix map
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
+    :param use_weighted_counts: If True the pixel counts are weighted by
+                            the weights of the objects in the pixel
     """
-    counts, mask, weighted_map_counts = get_counts_and_mask(
+    counts, mask, weighted_counts = get_counts_and_mask(
         pix_indices, nside, weights)
     m1 = _average_and_mask(q1, pix_indices, nside,
-                           weighted_map_counts, mask, weights)
+                           weighted_counts, mask, weights)
     m2 = _average_and_mask(q2, pix_indices, nside,
-                           weighted_map_counts, mask, weights)
-    return m1, m2, counts
+                           weighted_counts, mask, weights)
+
+    if use_weighted_counts is True:
+        return m1, m2, weighted_counts
+    else:
+        return m1, m2, counts
 
 
 def get_counts_and_mask(pix_indices, nside, weights=None):
@@ -127,30 +158,33 @@ def get_counts_and_mask(pix_indices, nside, weights=None):
     Construct a Healpix map containing object counts
     :param pix_indices: Healpix pixel indices
     :param nside: nside of the Healpix map
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
     :return map_counts: Healpix map with counts
     :return mask: mask of non-empty pixels
-    :return weighted_map_counts: Healpix weight map
+    :return weighted_counts: Healpix weight map
     """
-    weighted_map_counts = _fill_map(np.ones_like(
+    weighted_counts = _fill_map(np.ones_like(
         pix_indices), pix_indices, nside, weights)
     if weights is not None:
         map_counts = _fill_map(np.ones_like(pix_indices), pix_indices, nside)
     else:
-        map_counts = weighted_map_counts
+        map_counts = weighted_counts
     mask = map_counts > 0
-    return map_counts, mask, weighted_map_counts
+    return map_counts, mask, weighted_counts
 
 
 def _average_and_mask(q, pix_indices, nside, map_counts, mask, weights=None):
     """
-    Fill a Healpix map with given values by putting the average value into each pixel. Mask empty pixels.
+    Fill a Healpix map with given values by putting the
+    average value into each pixel. Mask empty pixels.
     :param q: values to put onto map
     :param pix_indices: Healpix pixel indices corresponding to the values
     :param nside: nside of the Healpix map
     :param map_counts: Healpix map containing number counts in each pixel
     :param mask: mask indicating empty pixel
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight
+                    catalog (gets normalized in each pixel)
     :return: map containing average values
     """
     map_filled = _fill_map(q, pix_indices, nside, weights)
@@ -165,7 +199,8 @@ def _fill_map(q, pix_indices, nside, weights=None):
     :param q: values to put onto the map
     :param pix_indices: Healpix pixel indices corresponding to the values
     :param nside: nside of the Healpix map
-    :param weights: Optionally can give a weight catalog (gets normalized in each pixel)
+    :param weights: Optionally can give a weight catalog
+                    (gets normalized in each pixel)
     :return: Healpix map containing sums of the values falling into the pixels
     """
     if weights is None:
@@ -188,8 +223,10 @@ def _fill_map_numba_weighted(q, pix_indices, n_pix, weights):
 
 def normalize_count_map(counts):
     """
-    Normalizes count map in-place by dividing by the average count and the square root of the fractional sky coverage.
-    As a result, the weight power spectrum will be of the same order of magnitude as the unweighted one.
+    Normalizes count map in-place by dividing by the average count and
+    the square root of the fractional sky coverage.
+    As a result, the weight power spectrum will be of the same order
+    of magnitude as the unweighted one.
     :param counts: count map
     """
     counts /= np.mean(counts[counts > 0]
