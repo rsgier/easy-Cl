@@ -7,8 +7,8 @@ from setuptools import find_packages, setup
 
 requirements = ['numpy',
                 'healpy',
-                'numba',
-                'pyshtools']  # during runtime
+                'numba==-.50.1',
+                'pyshtools<4.7']  # during runtime
 
 
 with open("README.rst") as readme_file:
