@@ -258,7 +258,7 @@ def weights_power_spectrum(weights_1, weights_2=None, l_max=None, l2_max=None, c
     cl = run_anafast.run_anafast(weights_1, 's0', map_2=weights_2, map_2_type='s0', lmax=l_max)['cl_TT']
 
     if correct_pixwin:
-        pixwin = hp.pixwin(hp.npix2nside(weights_1.size))
+        pixwin = hp.pixwin(hp.npix2nside(weights_1.size), lmax=l_max)
         cl /= pixwin[:cl.size] ** 2
 
     return cl
