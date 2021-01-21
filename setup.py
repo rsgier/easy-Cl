@@ -7,7 +7,6 @@ from setuptools import find_packages, setup
 
 requirements = ['numpy',
                 'healpy',
-                'numba==0.50.1',
                 'pyshtools<4.7']  # during runtime
 
 
